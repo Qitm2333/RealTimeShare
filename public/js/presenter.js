@@ -1,9 +1,6 @@
 (function () {
   const pdfInput = document.getElementById('pdfInput');
-  const pdfReplace = document.getElementById('pdfReplace');
   const pdfRemove = document.getElementById('pdfRemove');
-  const pdfName = document.getElementById('pdfName');
-  const pdfMeta = document.getElementById('pdfMeta');
   const pdfStatus = document.getElementById('pdfStatus');
   const pdfReader = new window.LivePdfReader({
     canvas: document.getElementById('pdfCanvas'),
@@ -165,10 +162,7 @@
 
   function applyDocument(nextDocument) {
     documentInfo = nextDocument || { available: false };
-    pdfReplace.disabled = !documentInfo.available;
     pdfRemove.disabled = !documentInfo.available;
-    pdfName.textContent = documentInfo.available ? documentInfo.name : '尚未上传 PDF';
-    pdfMeta.textContent = documentInfo.available ? `${formatBytes(documentInfo.size)} · 准备阅读` : '等待文件';
     pdfStatus.textContent = documentInfo.available ? '已就绪' : '未打开';
 
     if (!documentInfo.available) {
@@ -204,9 +198,8 @@
     }
 
     pdfInput.disabled = true;
-    pdfReplace.disabled = true;
     pdfRemove.disabled = true;
-    pdfMeta.textContent = `正在上传 · ${formatBytes(file.size)}`;
+    pdfStatus.textContent = `正在上传 · ${formatBytes(file.size)}`;
 
     try {
       const response = await fetch('/api/document', {
@@ -731,10 +724,6 @@
   window.addEventListener('resize', revealFullscreenUi);
   window.addEventListener('pointermove', handleFullscreenPointer);
   pdfInput.addEventListener('change', () => uploadPdf(pdfInput.files?.[0]));
-  pdfReplace.addEventListener('click', () => {
-    pdfInput.value = '';
-    pdfInput.click();
-  });
   pdfRemove.addEventListener('click', async () => {
     if (!documentInfo?.available || !window.confirm('确定移除当前 PDF 吗？')) {
       return;

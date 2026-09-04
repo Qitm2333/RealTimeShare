@@ -224,6 +224,14 @@ body {
   backdrop-filter: blur(16px);
 }
 
+.pdf-toolbar .audience-mode-panel {
+  position: static;
+  top: auto;
+  left: auto;
+  z-index: auto;
+  flex: 0 0 auto;
+}
+
 .audience-mode-panel button {
   min-height: 28px;
   padding: 0 8px;
@@ -1101,6 +1109,9 @@ body {
 }
 
 .stage.is-presentation-fullscreen .pdf-viewport {
+  position: absolute;
+  inset: 0;
+  place-items: center;
   padding: 0;
 }
 
