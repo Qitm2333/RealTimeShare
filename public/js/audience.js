@@ -25,6 +25,23 @@
   let danmuCooldownTimer;
   let lastEffectTapAt = 0;
   let activeView = 'interaction';
+  const identityStorageKey = 'live-share-identity';
+  let identity = loadIdentity();
+
+  function loadIdentity() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(identityStorageKey) || 'null');
+      return saved && typeof saved === 'object' ? saved : { userId: '', nickname: '' };
+    } catch (error) {
+      return { userId: '', nickname: '' };
+    }
+  }
+
+  function saveIdentity(nextIdentity) {
+    identity = nextIdentity;
+    localStorage.setItem(identityStorageKey, JSON.stringify(identity));
+    nickname.value = identity.nickname || '';
+  }
 
   function renderGiftButtons() {
     effectGrid.textContent = '';
@@ -183,6 +200,7 @@
 
     websocket.addEventListener('open', () => {
       websocket.send(JSON.stringify({ type: 'role', role: 'audience' }));
+      websocket.send(JSON.stringify({ type: 'identify', userId: identity.userId, nickname: getUser() }));
       setStatus('已连接', 'is-online');
       sendButton.disabled = false;
       effectControls.forEach((control) => {
@@ -201,6 +219,10 @@
 
       if (message.type === 'system' && message.status === 'cooldown' && message.scope === 'danmu') {
         setStatus('稍后再发', '');
+      }
+
+      if (message.type === 'identity' && message.user) {
+        saveIdentity(message.user);
       }
 
       if (message.type === 'config' && message.status === 'gifts') {
@@ -240,6 +262,13 @@
     send({ type: 'danmu', content }, { cooldown: 'danmu' });
     messageInput.value = '';
     messageInput.focus();
+  });
+
+  nickname.value = identity.nickname || '';
+  nickname.addEventListener('change', () => {
+    if (identity.userId && isConnected()) {
+      websocket.send(JSON.stringify({ type: 'identify', userId: identity.userId, nickname: getUser() }));
+    }
   });
 
   messageInput.addEventListener('keydown', (event) => {

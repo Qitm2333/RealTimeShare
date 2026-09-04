@@ -22,10 +22,29 @@ const publicDir = path.join(__dirname, 'public');
 const pdfjsDir = path.join(publicDir, 'pdfjs');
 const dataDir = path.join(__dirname, 'data');
 const currentPdfPath = path.join(dataDir, 'current.pdf');
+const usersPath = path.join(dataDir, 'users.json');
 let gifts = loadGifts();
 let validEffectIds = new Set(gifts.map((gift) => gift.id));
 let audienceMode = 'reader';
 let documentState = readDocumentState();
+const users = loadUsers();
+
+function loadUsers() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(usersPath, 'utf8'));
+    return new Map(Object.entries(parsed).filter(([id, user]) => user && typeof user === 'object'));
+  } catch (error) {
+    return new Map();
+  }
+}
+
+function persistUsers() {
+  fs.writeFileSync(usersPath, JSON.stringify(Object.fromEntries(users), null, 2));
+}
+
+function createUserId() {
+  return `u_${crypto.randomBytes(8).toString('hex')}`;
+}
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '10kb' }));
@@ -114,7 +133,7 @@ function normalizeMessage(raw) {
     return null;
   }
 
-  const user = cleanString(message.user, '匿名', MAX_USER_LENGTH);
+  const user = cleanString(message.nickname || message.user, '匿名', MAX_USER_LENGTH);
 
   if (message.type === 'danmu') {
     const content = cleanString(message.content, '', MAX_CONTENT_LENGTH);
@@ -351,6 +370,8 @@ wss.on('connection', (ws) => {
   ws.role = 'unknown';
   ws.lastDanmuAt = 0;
   ws.lastEffectAt = 0;
+  ws.userId = null;
+  ws.nickname = '匿名';
   clients.add(ws);
 
   ws.send(JSON.stringify({ type: 'system', status: 'connected', clients: getAudienceCount() }));
@@ -376,11 +397,32 @@ wss.on('connection', (ws) => {
       return;
     }
 
+    if (rawMessage?.type === 'identify' && ws.role === 'audience') {
+      const requestedId = typeof rawMessage.userId === 'string' && /^u_[a-f0-9]{16}$/.test(rawMessage.userId)
+        ? rawMessage.userId
+        : null;
+      const userId = requestedId || createUserId();
+      const nickname = cleanString(rawMessage.nickname, '匿名', MAX_USER_LENGTH);
+      const now = Date.now();
+      const user = { userId, nickname, createdAt: users.get(userId)?.createdAt || now, lastSeenAt: now };
+      users.set(userId, user);
+      persistUsers();
+      ws.userId = userId;
+      ws.nickname = nickname;
+      ws.send(JSON.stringify({ type: 'identity', user }));
+      return;
+    }
+
     const message = normalizeMessage(raw);
 
     if (!message) {
       ws.send(JSON.stringify({ type: 'system', status: 'invalid' }));
       return;
+    }
+
+    if (ws.role === 'audience' && ws.userId) {
+      message.userId = ws.userId;
+      message.user = ws.nickname;
     }
 
     if (message.type === 'danmu' && now - ws.lastDanmuAt < DANMU_COOLDOWN_MS) {
