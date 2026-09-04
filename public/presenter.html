@@ -16,8 +16,7 @@
             <button id="pdfRemove" class="secondary-button danger-button" type="button" disabled>移除文件</button>
           </div>
           <div id="pdfStatus" class="pdf-status">未打开</div>
-          <button id="pollStart" class="secondary-button" type="button">发起投票</button>
-          <button id="pollEnd" class="secondary-button danger-button" type="button" disabled>结束投票</button>
+          <button id="pollToggle" class="secondary-button" type="button" aria-expanded="false">投票</button>
           <div class="audience-mode-panel" aria-label="观众内容模式">
             <span>观众内容</span>
             <button id="audienceModeToggle" type="button" aria-pressed="false">仅互动</button>
@@ -96,6 +95,16 @@
       </aside>
 
     </main>
+    <aside id="pollPanel" class="poll-panel" hidden aria-label="投票工作台">
+      <div class="poll-panel-head"><strong>投票</strong><button id="pollClose" type="button">×</button></div>
+      <div id="pollPresets" class="poll-presets"></div>
+      <div id="pollEditor" class="poll-editor">
+        <label>问题<input id="pollQuestionInput" maxlength="120" placeholder="输入投票问题" /></label>
+        <label>选项（每行一个）<textarea id="pollOptionsInput" rows="4" maxlength="240" placeholder="选项一\n选项二"></textarea></label>
+        <div class="poll-editor-actions"><button id="pollSave" type="button">保存预设</button><button id="pollLaunch" class="primary-button" type="button">发起投票</button><button id="pollEnd" class="danger-button" type="button" hidden>结束投票</button></div>
+      </div>
+      <div id="pollLive" class="poll-live" hidden></div>
+    </aside>
 
     <div id="passwordDialog" class="password-dialog" role="dialog" aria-modal="true">
       <form id="passwordForm" class="password-panel">

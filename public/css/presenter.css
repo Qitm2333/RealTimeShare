@@ -232,9 +232,20 @@ body {
   flex: 0 0 auto;
 }
 
-.poll-card { position: absolute; top: 50%; left: 50%; z-index: 10; width: min(420px, calc(100vw - 48px)); padding: 22px; transform: translate(-50%, -50%); border: 1px solid #d2d2d7; border-radius: 16px; background: rgba(255,255,255,.96); box-shadow: 0 18px 50px rgba(0,0,0,.16); }
-.poll-card[hidden] { display: none; }
-.poll-card > strong { display: block; margin-bottom: 16px; font-size: 22px; }
+.poll-panel { position: absolute; top: 72px; right: 24px; z-index: 13; width: min(380px, calc(100vw - 48px)); padding: 16px; border: 1px solid #d2d2d7; border-radius: 14px; background: rgba(255,255,255,.97); box-shadow: 0 18px 50px rgba(0,0,0,.16); }
+.poll-panel[hidden] { display: none; }
+.poll-panel-head,.poll-editor-actions { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.poll-panel-head button { border:0; background:none; font-size:22px; cursor:pointer; }
+.poll-presets { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:12px 0; }
+.poll-presets button { min-height:32px; border:1px solid #d2d2d7; border-radius:7px; background:#fff; cursor:pointer; }
+.poll-presets button.is-active { background:#0071e3; color:#fff; }
+.poll-editor { display:grid; gap:10px; }
+.poll-editor label { display:grid; gap:5px; color:#6e6e73; font-size:12px; font-weight:700; }
+.poll-editor input,.poll-editor textarea { width:100%; padding:8px; border:1px solid #d2d2d7; border-radius:7px; font:inherit; resize:vertical; }
+.poll-editor-actions button { min-height:34px; padding:0 10px; border:1px solid #d2d2d7; border-radius:7px; background:#fff; cursor:pointer; }
+.poll-editor-actions .primary-button { background:#0071e3; border-color:#0071e3; color:#fff; }
+.poll-editor-actions .danger-button { color:#b42318; }
+.poll-live > strong { display:block; margin-bottom:16px; font-size:22px; }
 .poll-result { display: flex; justify-content: space-between; gap: 12px; margin: 10px 0; padding: 10px 12px; border-radius: 8px; background: #f5f5f7; }
 .poll-card small { display: block; margin-top: 14px; color: #6e6e73; }
 

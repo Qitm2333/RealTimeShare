@@ -40,13 +40,20 @@
   const qrHint = document.getElementById('qrHint');
   const giftToggle = document.getElementById('giftToggle');
   const audienceModeToggle = document.getElementById('audienceModeToggle');
-  const pollStartButton = document.getElementById('pollStart');
+  const pollToggle = document.getElementById('pollToggle');
+  const pollPanel = document.getElementById('pollPanel');
+  const pollClose = document.getElementById('pollClose');
+  const pollPresets = document.getElementById('pollPresets');
+  const pollQuestionInput = document.getElementById('pollQuestionInput');
+  const pollOptionsInput = document.getElementById('pollOptionsInput');
+  const pollEditor = document.getElementById('pollEditor');
+  const pollSave = document.getElementById('pollSave');
+  const pollLaunch = document.getElementById('pollLaunch');
   const pollEndButton = document.getElementById('pollEnd');
+  const pollLive = document.getElementById('pollLive');
   let activePoll;
-  const pollCard = document.createElement('aside');
-  pollCard.className = 'poll-card';
-  pollCard.hidden = true;
-  document.querySelector('.stage')?.appendChild(pollCard);
+  let selectedPreset = 0;
+  const pollPresetsData = JSON.parse(localStorage.getItem('live-share-poll-presets') || '[]');
 
   const trackCount = 5;
   const manualAudienceUrlKey = 'live-share-manual-audience-url';
@@ -66,11 +73,22 @@
 
   function renderPoll(poll) {
     activePoll = poll;
-    pollCard.hidden = !poll;
+    pollLive.hidden = !poll;
+    pollEditor.hidden = Boolean(poll);
+    pollLaunch.hidden = Boolean(poll);
+    pollEndButton.hidden = !poll || poll.ended;
     if (!poll) return;
     const total = Number(poll.total || 0);
-    pollCard.innerHTML = `<strong>${poll.question}</strong>${poll.options.map((option, index) => `<div class="poll-result"><span>${option}</span><span>${total ? Math.round((poll.counts[index] || 0) / total * 100) : 0}%</span></div>`).join('')}<small>已参与 ${total} 人</small>`;
-    pollEndButton.disabled = Boolean(poll.ended);
+    pollLive.innerHTML = `<strong>${poll.question}</strong>${poll.options.map((option, index) => `<div class="poll-result"><span>${option}</span><span>${total ? Math.round((poll.counts[index] || 0) / total * 100) : 0}%</span></div>`).join('')}<small>已参与 ${total} 人</small>`;
+  }
+
+  function renderPresets() {
+    pollPresets.textContent = '';
+    for (let index = 0; index < 6; index += 1) {
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = String(index + 1); button.className = index === selectedPreset ? 'is-active' : '';
+      button.addEventListener('click', () => { selectedPreset = index; const preset = pollPresetsData[index] || {}; pollQuestionInput.value = preset.question || ''; pollOptionsInput.value = (preset.options || []).join('\n'); renderPresets(); });
+      pollPresets.appendChild(button);
+    }
   }
 
   function setConnectionStatus(text) {
@@ -747,13 +765,10 @@
   window.addEventListener('resize', revealFullscreenUi);
   window.addEventListener('pointermove', handleFullscreenPointer);
   pdfInput.addEventListener('change', () => uploadPdf(pdfInput.files?.[0]));
-  pollStartButton.addEventListener('click', () => {
-    const question = window.prompt('请输入投票问题');
-    if (!question || !websocket || websocket.readyState !== WebSocket.OPEN) return;
-    const options = window.prompt('请输入选项，用逗号分隔（至少 2 项）')?.split(',').map((item) => item.trim()).filter(Boolean);
-    if (!options || options.length < 2) return;
-    websocket.send(JSON.stringify({ type: 'poll-start', question, options }));
-  });
+  pollToggle.addEventListener('click', () => { pollPanel.hidden = !pollPanel.hidden; pollToggle.setAttribute('aria-expanded', String(!pollPanel.hidden)); if (!pollPanel.hidden) { renderPresets(); pollPresets.querySelector('button')?.click(); } });
+  pollClose.addEventListener('click', () => { pollPanel.hidden = true; pollToggle.setAttribute('aria-expanded', 'false'); });
+  pollSave.addEventListener('click', () => { const question = pollQuestionInput.value.trim(); const options = pollOptionsInput.value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 6); if (!question || options.length < 2) return; pollPresetsData[selectedPreset] = { question, options }; localStorage.setItem('live-share-poll-presets', JSON.stringify(pollPresetsData)); renderPresets(); });
+  pollLaunch.addEventListener('click', () => { const question = pollQuestionInput.value.trim(); const options = pollOptionsInput.value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 6); if (question && options.length >= 2) websocket?.send(JSON.stringify({ type: 'poll-start', question, options })); });
   pollEndButton.addEventListener('click', () => websocket?.send(JSON.stringify({ type: 'poll-end' })));
   pdfRemove.addEventListener('click', async () => {
     if (!documentInfo?.available || !window.confirm('确定移除当前 PDF 吗？')) {
