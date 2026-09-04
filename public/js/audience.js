@@ -9,6 +9,11 @@
   const interactionPanel = document.getElementById('interactionPanel');
   const interactionTab = document.getElementById('interactionTab');
   const readerTab = document.getElementById('readerTab');
+  const pollDialog = document.getElementById('pollDialog');
+  const pollQuestion = document.getElementById('pollQuestion');
+  const pollOptions = document.getElementById('pollOptions');
+  const pollStatus = document.getElementById('pollStatus');
+  let activePoll = null;
   const pdfReader = new window.ContinuousPdfReader({
     container: document.getElementById('readerViewport'),
     emptyState: document.getElementById('readerEmpty')
@@ -139,6 +144,21 @@
     return websocket?.readyState === WebSocket.OPEN;
   }
 
+  function showPoll(poll) {
+    activePoll = poll;
+    pollDialog.hidden = !poll;
+    if (!poll) return;
+    pollQuestion.textContent = poll.question;
+    pollOptions.textContent = '';
+    poll.options.forEach((option, index) => {
+      const button = document.createElement('button');
+      button.type = 'button'; button.textContent = option;
+      button.addEventListener('click', () => { websocket?.send(JSON.stringify({ type: 'poll-vote', optionIndex: index })); pollStatus.textContent = '已提交'; [...pollOptions.children].forEach((item) => { item.disabled = true; }); });
+      pollOptions.appendChild(button);
+    });
+    pollStatus.textContent = poll.ended ? '投票已结束' : '';
+  }
+
   function setDanmuCooldown() {
     sendButton.disabled = true;
 
@@ -236,6 +256,9 @@
       if (message.type === 'system' && message.status === 'audience-mode') {
         applyDocumentState({ ...documentInfo, audienceMode: message.mode });
       }
+      if (['poll-start', 'poll-state', 'poll-end'].includes(message.type)) showPoll(message.poll);
+      if (message.type === 'poll-voted') pollStatus.textContent = '已提交';
+      if (message.type === 'poll-close') showPoll(null);
     });
 
     websocket.addEventListener('close', () => {

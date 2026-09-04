@@ -40,6 +40,13 @@
   const qrHint = document.getElementById('qrHint');
   const giftToggle = document.getElementById('giftToggle');
   const audienceModeToggle = document.getElementById('audienceModeToggle');
+  const pollStartButton = document.getElementById('pollStart');
+  const pollEndButton = document.getElementById('pollEnd');
+  let activePoll;
+  const pollCard = document.createElement('aside');
+  pollCard.className = 'poll-card';
+  pollCard.hidden = true;
+  document.querySelector('.stage')?.appendChild(pollCard);
 
   const trackCount = 5;
   const manualAudienceUrlKey = 'live-share-manual-audience-url';
@@ -56,6 +63,15 @@
   let audienceMode = 'reader';
   let lastStats;
   let fullscreenUiTimer;
+
+  function renderPoll(poll) {
+    activePoll = poll;
+    pollCard.hidden = !poll;
+    if (!poll) return;
+    const total = Number(poll.total || 0);
+    pollCard.innerHTML = `<strong>${poll.question}</strong>${poll.options.map((option, index) => `<div class="poll-result"><span>${option}</span><span>${total ? Math.round((poll.counts[index] || 0) / total * 100) : 0}%</span></div>`).join('')}<small>已参与 ${total} 人</small>`;
+    pollEndButton.disabled = Boolean(poll.ended);
+  }
 
   function setConnectionStatus(text) {
     connectionText = text;
@@ -675,6 +691,13 @@
       if (message.type === 'system' && message.status === 'clients') {
         setAudienceCount(message.clients);
       }
+
+      if (['poll-start', 'poll-update', 'poll-end', 'poll-state'].includes(message.type)) {
+        renderPoll(message.poll);
+      }
+      if (message.type === 'poll-close') {
+        renderPoll(null);
+      }
     });
 
     websocket.addEventListener('close', () => {
@@ -724,6 +747,14 @@
   window.addEventListener('resize', revealFullscreenUi);
   window.addEventListener('pointermove', handleFullscreenPointer);
   pdfInput.addEventListener('change', () => uploadPdf(pdfInput.files?.[0]));
+  pollStartButton.addEventListener('click', () => {
+    const question = window.prompt('请输入投票问题');
+    if (!question || !websocket || websocket.readyState !== WebSocket.OPEN) return;
+    const options = window.prompt('请输入选项，用逗号分隔（至少 2 项）')?.split(',').map((item) => item.trim()).filter(Boolean);
+    if (!options || options.length < 2) return;
+    websocket.send(JSON.stringify({ type: 'poll-start', question, options }));
+  });
+  pollEndButton.addEventListener('click', () => websocket?.send(JSON.stringify({ type: 'poll-end' })));
   pdfRemove.addEventListener('click', async () => {
     if (!documentInfo?.available || !window.confirm('确定移除当前 PDF 吗？')) {
       return;

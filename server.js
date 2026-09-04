@@ -26,6 +26,7 @@ const usersPath = path.join(dataDir, 'users.json');
 let gifts = loadGifts();
 let validEffectIds = new Set(gifts.map((gift) => gift.id));
 let audienceMode = 'reader';
+let activePoll = null;
 let documentState = readDocumentState();
 const users = loadUsers();
 
@@ -185,6 +186,11 @@ function getDocumentPayload() {
     ...documentState,
     audienceMode
   };
+}
+
+function getPollPayload() {
+  if (!activePoll) return null;
+  return { id: activePoll.id, question: activePoll.question, options: activePoll.options, counts: activePoll.counts, total: activePoll.total, ended: Boolean(activePoll.ended) };
 }
 
 app.get('/api/document', (req, res) => {
@@ -379,6 +385,7 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'document', document: getDocumentPayload() }));
   ws.send(JSON.stringify({ type: 'config', status: 'gifts', gifts }));
   ws.send(JSON.stringify({ type: 'system', status: 'audience-mode', mode: audienceMode }));
+  if (activePoll) ws.send(JSON.stringify({ type: 'poll-state', poll: getPollPayload() }));
   broadcastAudienceCount();
 
   ws.on('message', (raw) => {
@@ -410,6 +417,38 @@ wss.on('connection', (ws) => {
       ws.userId = userId;
       ws.nickname = nickname;
       ws.send(JSON.stringify({ type: 'identity', user }));
+      return;
+    }
+
+    if (rawMessage?.type === 'poll-start' && ws.role === 'presenter') {
+      const question = cleanString(rawMessage.question, '', 120);
+      const options = Array.isArray(rawMessage.options) ? rawMessage.options.map((option) => cleanString(option, '', 40)).filter(Boolean).slice(0, 6) : [];
+      if (!question || options.length < 2) return;
+      activePoll = { id: `poll_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`, question, options, counts: options.map(() => 0), total: 0, voters: new Set(), ended: false };
+      broadcast({ type: 'poll-start', poll: getPollPayload() });
+      return;
+    }
+
+    if (rawMessage?.type === 'poll-end' && ws.role === 'presenter' && activePoll) {
+      activePoll.ended = true;
+      broadcast({ type: 'poll-end', poll: getPollPayload() });
+      return;
+    }
+
+    if (rawMessage?.type === 'poll-close' && ws.role === 'presenter') {
+      activePoll = null;
+      broadcast({ type: 'poll-close' });
+      return;
+    }
+
+    if (rawMessage?.type === 'poll-vote' && ws.role === 'audience' && activePoll && !activePoll.ended && ws.userId) {
+      const optionIndex = Number(rawMessage.optionIndex);
+      if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex >= activePoll.options.length || activePoll.voters.has(ws.userId)) return;
+      activePoll.voters.add(ws.userId);
+      activePoll.counts[optionIndex] += 1;
+      activePoll.total += 1;
+      broadcast({ type: 'poll-update', poll: getPollPayload() });
+      ws.send(JSON.stringify({ type: 'poll-voted', pollId: activePoll.id, optionIndex }));
       return;
     }
 
