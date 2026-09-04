@@ -256,7 +256,8 @@
       if (message.type === 'system' && message.status === 'audience-mode') {
         applyDocumentState({ ...documentInfo, audienceMode: message.mode });
       }
-      if (['poll-start', 'poll-state', 'poll-end'].includes(message.type)) showPoll(message.poll);
+      if (['poll-start', 'poll-state'].includes(message.type)) showPoll(message.poll);
+      if (message.type === 'poll-end') showPoll(null);
       if (message.type === 'poll-voted') pollStatus.textContent = '已提交';
       if (message.type === 'poll-close') showPoll(null);
     });
