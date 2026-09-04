@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>现场互动分享 - 演讲端</title>
+    <link rel="stylesheet" href="/css/presenter.css" />
+  </head>
+  <body>
+    <main class="stage">
+      <section class="pdf-shell" aria-label="PDF 演示内容">
+        <div class="pdf-toolbar">
+          <div class="pdf-file-actions">
+            <label class="file-button" for="pdfInput">上传 PDF</label>
+            <input id="pdfInput" class="visually-hidden" type="file" accept="application/pdf,.pdf" />
+            <button id="pdfReplace" class="secondary-button" type="button" disabled>替换文件</button>
+            <button id="pdfRemove" class="secondary-button danger-button" type="button" disabled>移除文件</button>
+          </div>
+          <div class="pdf-file-meta">
+            <strong id="pdfName">尚未上传 PDF</strong>
+            <span id="pdfMeta">等待文件</span>
+          </div>
+          <div id="pdfStatus" class="pdf-status">未打开</div>
+          <div class="pdf-reader-actions" aria-label="PDF 阅读控制">
+            <button id="pdfPrevious" type="button" aria-label="上一页">‹</button>
+            <label class="page-jump">
+              <input id="pdfPageInput" type="number" min="1" value="1" aria-label="页码" />
+              <span>/ <span id="pdfPageCount">0</span></span>
+            </label>
+            <button id="pdfNext" type="button" aria-label="下一页">›</button>
+            <button id="pdfZoomOut" type="button" aria-label="缩小">−</button>
+            <button id="pdfZoomIn" type="button" aria-label="放大">+</button>
+            <button id="pdfFitWidth" class="fit-button" type="button">适应宽度</button>
+            <button id="pdfFitPage" class="fit-button" type="button">整页显示</button>
+          </div>
+        </div>
+        <div id="pdfViewport" class="pdf-viewport">
+          <canvas id="pdfCanvas" class="pdf-canvas" hidden></canvas>
+          <div id="emptyState" class="empty-state">
+            <strong>上传一个 PDF 开始演示</strong>
+            <span>当前版本一次只支持一个 PDF 文件</span>
+          </div>
+        </div>
+      </section>
+
+      <div id="danmuLayer" class="danmu-layer" aria-live="polite"></div>
+      <div id="effectLayer" class="effect-layer" aria-live="polite"></div>
+      <aside class="scoreboard" aria-label="互动统计">
+        <div class="score-item gift-score">
+          <span class="score-icon">🎁</span>
+          <span class="score-label">礼物</span>
+          <strong id="giftCount">0</strong>
+        </div>
+        <div class="score-item top-gift-score">
+          <span id="topGiftIcon" class="score-icon">✨</span>
+          <span id="topGiftLabel" class="score-label">最高</span>
+          <strong id="topGiftCount">0</strong>
+        </div>
+        <div class="score-item heat-score">
+          <span class="score-icon">🔥</span>
+          <span class="score-label">热度</span>
+          <strong id="heatCount">0</strong>
+        </div>
+      </aside>
+      <button id="giftToggle" class="gift-toggle is-on" type="button" aria-pressed="true">礼物开</button>
+      <div id="comboBadge" class="combo-badge" hidden>互动爆发</div>
+
+      <footer class="presenter-bar">
+        <div>
+          <span>PDF 演示</span>
+          <span id="connectionStatus">连接中</span>
+        </div>
+        <div id="toast" class="toast">等待观众互动</div>
+      </footer>
+
+      <aside id="qrPanel" class="qr-panel" aria-label="观众扫码入场">
+        <button id="qrToggle" class="qr-toggle" type="button" aria-expanded="false">扫码入场</button>
+        <div id="qrCard" class="qr-card" hidden>
+          <div class="qr-card-head">
+            <div>
+              <p>观众入口</p>
+              <strong>扫码加入互动</strong>
+            </div>
+            <button id="qrClose" class="qr-close" type="button" aria-label="收起二维码">×</button>
+          </div>
+          <img id="qrImage" class="qr-image" alt="观众入口二维码" />
+          <label class="qr-field" for="qrUrlInput">
+            <span>入场地址</span>
+            <input id="qrUrlInput" type="url" inputmode="url" spellcheck="false" />
+          </label>
+          <div class="qr-actions">
+            <select id="qrUrlSelect" aria-label="自动识别地址"></select>
+            <button id="qrSave" type="button">保存</button>
+          </div>
+          <p id="qrHint" class="qr-hint">自动识别局域网地址；不准时可手动输入。</p>
+        </div>
+      </aside>
+
+      <aside class="audience-mode-panel" aria-label="观众内容模式">
+        <span>观众内容</span>
+        <button id="audienceModeToggle" type="button" aria-pressed="false">仅互动</button>
+      </aside>
+    </main>
+
+    <div id="passwordDialog" class="password-dialog" role="dialog" aria-modal="true">
+      <form id="passwordForm" class="password-panel">
+        <h1>演讲端</h1>
+        <label for="passwordInput">请输入演讲密码</label>
+        <div class="password-row">
+          <input id="passwordInput" type="password" autocomplete="current-password" autofocus />
+          <button type="submit">进入</button>
+        </div>
+        <p id="passwordError" class="password-error" hidden>密码不正确</p>
+      </form>
+    </div>
+
+    <script src="/js/pdf-reader.js"></script>
+    <script src="/js/presenter.js"></script>
+  </body>
+</html>

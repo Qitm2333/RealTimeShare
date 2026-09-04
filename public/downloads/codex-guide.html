@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Codex 使用经验分享 PDF</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #f7f5ef;
+        color: #111827;
+        font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+        line-height: 1.6;
+      }
+
+      .page {
+        min-height: 100vh;
+        padding: 42px 54px;
+        page-break-after: always;
+        background: #f7f5ef;
+      }
+
+      .page:last-child {
+        page-break-after: auto;
+      }
+
+      .kicker {
+        margin: 0 0 16px;
+        color: #0f766e;
+        font-size: 18px;
+        font-weight: 800;
+      }
+
+      h1 {
+        margin: 0 0 24px;
+        color: #111827;
+        font-size: 40px;
+        line-height: 1.15;
+      }
+
+      h2 {
+        margin: 0 0 18px;
+        color: #111827;
+        font-size: 29px;
+        line-height: 1.25;
+      }
+
+      h3 {
+        margin: 0 0 8px;
+        color: #111827;
+        font-size: 22px;
+      }
+
+      p {
+        margin: 0 0 14px;
+        font-size: 17px;
+      }
+
+      .lead {
+        max-width: 920px;
+        color: #374151;
+        font-size: 21px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 24px;
+      }
+
+      .grid.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .card,
+      .step,
+      .note {
+        padding: 20px;
+        border: 1px solid #dedee3;
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 14px;
+      }
+
+      .num {
+        display: inline-grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        background: #0f766e;
+        color: #fff;
+        font-size: 20px;
+        font-weight: 800;
+      }
+
+      ul {
+        margin: 10px 0 0;
+        padding-left: 1.2em;
+      }
+
+      li {
+        margin: 7px 0;
+        font-size: 16px;
+      }
+
+      .note {
+        margin-top: 22px;
+        border-left: 6px solid #0f766e;
+      }
+
+      .muted {
+        color: #64748b;
+      }
+
+      .checklist li {
+        list-style: square;
+      }
+
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="page">
+      <p class="kicker">Codex 使用经验分享</p>
+      <h1>海绵宝宝也能听懂的 Codex 扫盲经验分享</h1>
+      <p class="lead">这份 PDF 是 Codex 使用经验的详细版，整理了实际踩过的坑、可行的配置路径、项目迭代方法和安全边界，方便后续按步骤查看。</p>
+      <div class="grid">
+        <div class="card"><h3>01 区别</h3><p>Codex 和网页版 ChatGPT 最大的差别，不是回答风格，而是能不能进入项目现场。</p></div>
+        <div class="card"><h3>02 工作方式</h3><p>Codex 可以读取资料、调用工具、产出文件，再根据结果继续修改。</p></div>
+        <div class="card"><h3>03 实操案例</h3><p>看两个真实用法：AI 读取项目文件夹给建议，以及用 vibe coding 搭出现场互动系统。</p></div>
+        <div class="card"><h3>04 安装避坑</h3><p>安装可以分成两条路：官方省心版，以及省钱但有风险版。</p></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">01 / Codex 和 ChatGPT 的区别</p>
+      <h2>ChatGPT 更像问答窗口，Codex 更像项目协作者</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>网页版 ChatGPT</h3>
+          <ul>
+            <li>适合解释概念、写文案、头脑风暴。</li>
+            <li>主要依赖使用者手动复制上下文。</li>
+            <li>回答之后，通常还需要手动打开文件继续操作。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Codex</h3>
+          <ul>
+            <li>可以读取本地项目里的 PRD、原型记录、日报、素材和页面文件。</li>
+            <li>可以在授权范围内修改文件、启动检查、打开页面查看结果。</li>
+            <li>适合把一个任务从“想法”推进到“可用产物”。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note">
+        <p><strong>理解重点：</strong>Codex 不只是更会聊天，而是能拿到项目上下文，并围绕上下文执行一串动作。</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">02 / 从聊天到动手做事</p>
+      <h2>先体验 1-6：一条典型工作链路</h2>
+      <div class="grid three">
+        <div class="step"><span class="num">1</span><div><h3>听懂需求</h3><p>先确认目标、对象、交付物和限制条件。</p></div></div>
+        <div class="step"><span class="num">2</span><div><h3>读取材料</h3><p>读取 PRD、原型、历史日报、截图和现有页面。</p></div></div>
+        <div class="step"><span class="num">3</span><div><h3>制定步骤</h3><p>拆解任务，明确先做什么、后检查什么。</p></div></div>
+        <div class="step"><span class="num">4</span><div><h3>调用工具</h3><p>打开页面、处理图片、读取文件、生成资料。</p></div></div>
+        <div class="step"><span class="num">5</span><div><h3>产出资料</h3><p>输出文档、页面、清单、PDF 或可查看版本。</p></div></div>
+        <div class="step"><span class="num">6</span><div><h3>验证再修</h3><p>检查展示效果、文案一致性、遗漏点和边界问题。</p></div></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">Plugin / Skill / MCP</p>
+      <h2>后了解 Plugin、Skill、MCP：把链路扩展开</h2>
+      <div class="grid">
+        <div class="card"><h3>Plugin</h3><p>把一组能力打包成可调用的工具。比如浏览器检查、图片生成、文件处理、页面检查。</p></div>
+        <div class="card"><h3>Skill</h3><p>把反复使用的做法沉淀成稳定流程。比如整理文档时，先读资料、统一口吻、检查页面。</p></div>
+        <div class="card"><h3>MCP</h3><p>把外部工具接入工作链路。比如 Photoshop、Figma、知识库、工单系统或内部资料源。</p></div>
+        <div class="card"><h3>安装方式</h3><p>装好 Codex 后，很多扩展不需要手动下载安装。说明要接入的工具，它可以协助配置。</p></div>
+      </div>
+      <div class="note">
+        <p><strong>产品和设计的重点：</strong>先跑完一次真实任务，再回头理解这些扩展词，会比一开始背概念更自然。</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">03 / 两个实操案例</p>
+      <h2>AI 怎么进入真实项目</h2>
+      <div class="grid">
+        <div class="card"><h3>不止是代码：读文件夹给建议</h3><p>把 PRD、日报、截图和页面文件放在项目里，让 AI 先看现状，再指出信息缺口、体验风险和下一步优化。</p></div>
+        <div class="card"><h3>Vibe coding 初体验：现场互动系统</h3><p>从“观众扫码发弹幕、送礼物、演讲端实时展示”开始，一边描述想要的效果，一边让 AI 搭出可运行版本。</p></div>
+      </div>
+      <div class="note">
+        <p><strong>关键经验：</strong>不用先把所有方案想完整，可以边试、边看、边改，让项目自己长出来。</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">04 / 安装与避坑</p>
+      <h2>路径一：官方省心版</h2>
+      <div class="grid">
+        <div class="card"><h3>准备账号</h3><p>准备可以正常登录的 Google 账号，以及本人可长期接收短信验证的手机号。</p></div>
+        <div class="card"><h3>官方订阅</h3><p>优先走官方订阅和官方客户端，入口、权限、模型体验和后续更新都更稳。</p></div>
+        <div class="card"><h3>美区 App Store</h3><p>如果手机端订阅入口更顺，可以准备美区 Apple ID，通过 App Store 订阅，再和电脑端登录账号联动使用。</p></div>
+        <div class="card"><h3>多端联动</h3><p>官方路径的好处是体验更完整，电脑端和手机 App 可以形成联动，也更少遇到配置兼容问题。</p></div>
+        <div class="card"><h3>手机号问题</h3><p>如果手机号无法验证，优先更换本人可用号码或正规长期号码。公共接码平台不建议用于重要账号验证。</p></div>
+        <div class="card"><h3>电脑安装</h3><p>Mac 可以直接安装 Codex；Windows 桌面版需要通过 Microsoft Store 安装。公司电脑如果默认关闭商店权限，可以请 IT 临时打开。</p></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">04 / 安装与避坑</p>
+      <h2>路径二：省钱但有风险版</h2>
+      <div class="grid">
+        <div class="step"><span class="num">1</span><div><h3>先装 Codex</h3><p>客户端还是要先装好。Mac 直接安装；Windows 走 Microsoft Store，公司电脑可能要请 IT 临时放开权限。</p></div></div>
+        <div class="step"><span class="num">2</span><div><h3>准备 API Key</h3><p>从 DeepSeek、模型服务商或中转站拿到 Key。先确认余额、额度、可用模型、网络连通性和是否兼容 OpenAI 风格接口。</p></div></div>
+        <div class="step"><span class="num">3</span><div><h3>用 cc switch 切配置</h3><p>cc switch 的作用是管理不同 API 地址、Key 和模型配置，方便在官方、DeepSeek 或中转站之间切换。</p></div></div>
+        <div class="step"><span class="num">4</span><div><h3>先跑测试任务</h3><p>导入配置后，先用非敏感小任务测试响应速度、工具调用、长上下文和代码修改效果，再决定是否用于正式工作。</p></div></div>
+      </div>
+      <div class="note">
+        <p><strong>注意：</strong>这条路便宜，但不是“免费省心版”。API Key 会把请求发到对应服务或中转站，稳定性、隐私、模型质量、计费和封号风险都要自己承担。它适合折腾和非敏感任务，不建议直接处理客户资料、内部机密或重要账号。</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">补充经验</p>
+      <h2>省钱路线一定要确认四件事</h2>
+      <div class="grid">
+        <div class="card"><h3>Key 和账号安全</h3><p>API Key 等同于花钱权限，不要随手发群里或写进公开文件。共享账号、临时邮箱、公共接码都不适合作为长期主方案。</p></div>
+        <div class="card"><h3>数据会去哪里</h3><p>中转站会经过额外服务链路。敏感文档、客户数据、内部资料先脱敏，或者只用官方路径和测试材料。</p></div>
+        <div class="card"><h3>服务是否稳定</h3><p>确认余额、额度、模型支持、网络质量和高峰期响应。便宜路线常见问题是变慢、断流、模型不可用。</p></div>
+        <div class="card"><h3>模型质量是否够用</h3><p>同名模型也可能有不同接入质量。先用小任务测试代码修改、文件读取、工具调用和长上下文，再放进正式流程。</p></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">安全边界</p>
+      <h2>让 AI 做事之前，要先讲清楚边界</h2>
+      <div class="grid">
+        <div class="card"><h3>哪些能看</h3><p>明确哪些资料可以读取，哪些账号、私密文档、客户数据不能碰。</p></div>
+        <div class="card"><h3>哪些能改</h3><p>明确哪些文件可以修改，哪些资料只能作为参考，不能直接覆盖。</p></div>
+        <div class="card"><h3>哪些要确认</h3><p>安装软件、上传文件、改权限、删除资料、发布内容前，都应该让人确认。</p></div>
+        <div class="card"><h3>人仍然负责判断</h3><p>AI 可以提高效率，但最终判断、取舍和风险责任仍然在人。</p></div>
+      </div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">最后</p>
+      <h2>最后留下两句话</h2>
+      <p class="lead">AI 是增强人的工具，不是替代人的判断；越会用它，越要保持清醒和边界。</p>
+      <div class="grid">
+        <div class="card"><h3>依靠 AI，但不依赖 AI</h3><p>用 AI 武装自己，保持学习、理解原理、训练判断力，让它放大能力，而不是替代思考。</p></div>
+        <div class="card"><h3>坚守信息安全红线</h3><p>账号、客户资料、内部文档和敏感数据都要守住边界；能不能给 AI 看，先按安全要求判断。</p></div>
+      </div>
+    </section>
+  </body>
+</html>

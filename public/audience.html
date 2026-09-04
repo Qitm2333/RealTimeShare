@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>现场互动分享 - 观众端</title>
+    <link rel="stylesheet" href="/css/audience.css" />
+  </head>
+  <body>
+    <main class="audience-app">
+      <header class="topbar">
+        <h1>现场互动</h1>
+        <a id="downloadButton" class="download-button" href="/document/current.pdf?download=1" download hidden>下载 PDF</a>
+      </header>
+
+      <section id="interactionPanel" class="interaction-panel app-view" aria-label="现场互动">
+        <div class="interaction-panel-head">
+          <strong>现场互动</strong>
+        </div>
+        <label for="nickname">昵称</label>
+        <input id="nickname" maxlength="18" placeholder="匿名" />
+        <div class="composer">
+          <label for="messageInput">弹幕</label>
+          <div class="composer-row">
+            <textarea id="messageInput" maxlength="80" rows="1" placeholder="发一句现场弹幕"></textarea>
+            <button id="sendButton" class="primary-button" type="button">发送</button>
+          </div>
+        </div>
+        <div id="effectGrid" class="effect-grid" aria-label="互动按钮"></div>
+      </section>
+
+      <section id="readerPanel" class="reader-panel app-view" aria-label="PDF 阅读" hidden>
+        <div id="readerViewport" class="reader-viewport">
+          <div id="readerEmpty" class="reader-empty">正在等待演讲者上传 PDF</div>
+        </div>
+      </section>
+
+      <nav class="bottom-nav" aria-label="页面切换">
+        <button id="interactionTab" class="nav-item is-active" type="button" aria-controls="interactionPanel" aria-selected="true">
+          互动
+        </button>
+        <button id="readerTab" class="nav-item" type="button" aria-controls="readerPanel" aria-selected="false">
+          阅读
+        </button>
+      </nav>
+    </main>
+
+    <script src="/js/pdf-reader.js"></script>
+    <script src="/js/audience.js"></script>
+  </body>
+</html>

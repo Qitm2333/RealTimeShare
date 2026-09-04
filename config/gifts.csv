@@ -1,0 +1,7 @@
+enable,id,sort,icon,name,action,toast,combo,motion,color_start,color_end
+true,tomato,1,🍅,番茄,扔番茄,扔出一个番茄,番茄雨来了,throw,#d94841,#fb7185
+true,rose,2,🌹,玫瑰,送玫瑰,送出一朵玫瑰,玫瑰刷屏了,bloom,#b8326b,#e879f9
+true,clap,3,👏,鼓掌,鼓掌,送出一阵掌声,掌声响起来,pulse,#c47a1b,#22c55e
+true,heart,4,❤️,喜欢,点喜欢,点亮一个喜欢,爱心满屏,float,#c73555,#f97316
+true,star,5,✨,星光,撒星光,撒下一片星光,星光闪闪,sparkle,#3f6fbd,#facc15
+true,party,6,🎉,庆祝,放彩花,放出一束彩花,全场庆祝,burst,#5f56b3,#14b8a6
