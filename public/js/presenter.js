@@ -46,6 +46,7 @@
   const pollPresets = document.getElementById('pollPresets');
   const pollQuestionInput = document.getElementById('pollQuestionInput');
   const pollOptionsInput = document.getElementById('pollOptionsInput');
+  const pollAddOption = document.getElementById('pollAddOption');
   const pollEditor = document.getElementById('pollEditor');
   const pollSave = document.getElementById('pollSave');
   const pollLaunch = document.getElementById('pollLaunch');
@@ -86,10 +87,14 @@
     pollPresets.textContent = '';
     for (let index = 0; index < 6; index += 1) {
       const button = document.createElement('button'); button.type = 'button'; button.textContent = String(index + 1); button.className = index === selectedPreset ? 'is-active' : '';
-      button.addEventListener('click', () => { selectedPreset = index; const preset = pollPresetsData[index] || {}; pollQuestionInput.value = preset.question || ''; pollOptionsInput.value = (preset.options || []).join('\n'); renderPresets(); });
+      button.addEventListener('click', () => { selectedPreset = index; const preset = pollPresetsData[index] || {}; pollQuestionInput.value = preset.question || ''; renderOptionInputs(preset.options || []); renderPresets(); });
       pollPresets.appendChild(button);
     }
   }
+
+  function getPollOptions() { return Array.from(pollOptionsInput.querySelectorAll('input')).map((input) => input.value.trim()).filter(Boolean).slice(0, 6); }
+  function refreshOptionLabels() { const rows = pollOptionsInput.querySelectorAll('.poll-option-row'); rows.forEach((row, index) => { row.querySelector('input').placeholder = `选项 ${index + 1}`; row.querySelector('button').disabled = rows.length <= 2; }); }
+  function renderOptionInputs(options = []) { pollOptionsInput.textContent = ''; const values = options.length ? options : ['', '']; values.forEach((value, index) => { const row = document.createElement('div'); row.className = 'poll-option-row'; const input = document.createElement('input'); input.maxLength = 40; input.placeholder = `选项 ${index + 1}`; input.value = value; const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '×'; remove.disabled = values.length <= 2; remove.addEventListener('click', () => { row.remove(); refreshOptionLabels(); }); row.append(input, remove); pollOptionsInput.appendChild(row); }); }
 
   function setConnectionStatus(text) {
     connectionText = text;
@@ -767,8 +772,9 @@
   pdfInput.addEventListener('change', () => uploadPdf(pdfInput.files?.[0]));
   pollToggle.addEventListener('click', () => { pollPanel.hidden = !pollPanel.hidden; pollToggle.setAttribute('aria-expanded', String(!pollPanel.hidden)); if (!pollPanel.hidden) { renderPresets(); pollPresets.querySelector('button')?.click(); } });
   pollClose.addEventListener('click', () => { pollPanel.hidden = true; pollToggle.setAttribute('aria-expanded', 'false'); });
-  pollSave.addEventListener('click', () => { const question = pollQuestionInput.value.trim(); const options = pollOptionsInput.value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 6); if (!question || options.length < 2) return; pollPresetsData[selectedPreset] = { question, options }; localStorage.setItem('live-share-poll-presets', JSON.stringify(pollPresetsData)); renderPresets(); });
-  pollLaunch.addEventListener('click', () => { const question = pollQuestionInput.value.trim(); const options = pollOptionsInput.value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 6); if (question && options.length >= 2) websocket?.send(JSON.stringify({ type: 'poll-start', question, options })); });
+  pollAddOption.addEventListener('click', () => { if (pollOptionsInput.querySelectorAll('input').length < 6) renderOptionInputs([...getPollOptions(), '']); });
+  pollSave.addEventListener('click', () => { const question = pollQuestionInput.value.trim(); const options = getPollOptions(); if (!question || options.length < 2) return; pollPresetsData[selectedPreset] = { question, options }; localStorage.setItem('live-share-poll-presets', JSON.stringify(pollPresetsData)); renderPresets(); });
+  pollLaunch.addEventListener('click', () => { const question = pollQuestionInput.value.trim(); const options = getPollOptions(); if (question && options.length >= 2) websocket?.send(JSON.stringify({ type: 'poll-start', question, options })); });
   pollEndButton.addEventListener('click', () => websocket?.send(JSON.stringify({ type: 'poll-end' })));
   pdfRemove.addEventListener('click', async () => {
     if (!documentInfo?.available || !window.confirm('确定移除当前 PDF 吗？')) {

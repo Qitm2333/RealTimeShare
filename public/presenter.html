@@ -100,7 +100,7 @@
       <div id="pollPresets" class="poll-presets"></div>
       <div id="pollEditor" class="poll-editor">
         <label>问题<input id="pollQuestionInput" maxlength="120" placeholder="输入投票问题" /></label>
-        <label>选项（每行一个）<textarea id="pollOptionsInput" rows="4" maxlength="240" placeholder="选项一\n选项二"></textarea></label>
+        <div class="poll-options-field"><span>选项</span><div id="pollOptionsInput" class="poll-option-list"></div><button id="pollAddOption" class="poll-add-option" type="button">＋ 添加选项</button></div>
         <div class="poll-editor-actions"><button id="pollSave" type="button">保存预设</button><button id="pollLaunch" class="primary-button" type="button">发起投票</button><button id="pollEnd" class="danger-button" type="button" hidden>结束投票</button></div>
       </div>
       <div id="pollLive" class="poll-live" hidden></div>
