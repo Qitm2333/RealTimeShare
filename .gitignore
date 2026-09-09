@@ -3,3 +3,11 @@ node_modules/
 *.pid
 public/downloads/chrome-profile/
 public/downloads/edge-pdf-profile/
+.qa-server/
+
+# Runtime state created by the local interaction server
+data/users.json
+data/interaction-state.json
+data/lottery-history.json
+data/poll-state.json
+data/*.tmp

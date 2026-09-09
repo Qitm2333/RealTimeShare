@@ -9,7 +9,14 @@
   <body>
     <main class="audience-app">
       <header class="topbar">
-        <h1>现场互动</h1>
+        <div class="brand-block">
+          <h1>现场互动</h1>
+          <div id="identityChip" class="identity-chip" hidden title="当前浏览器身份" aria-label="当前身份">
+            <strong id="nicknameDisplay"></strong>
+            <span id="userIdDisplay"></span>
+          </div>
+          <span id="connectionStatus" class="status">连接中</span>
+        </div>
         <a id="downloadButton" class="download-button" href="/document/current.pdf?download=1" download hidden>下载 PDF</a>
       </header>
 
@@ -17,8 +24,7 @@
         <div class="interaction-panel-head">
           <strong>现场互动</strong>
         </div>
-        <label for="nickname">昵称</label>
-        <input id="nickname" maxlength="18" placeholder="匿名" />
+        <input id="nickname" type="hidden" maxlength="18" value="匿名" />
         <div class="composer">
           <label for="messageInput">弹幕</label>
           <div class="composer-row">
@@ -44,8 +50,21 @@
         </button>
       </nav>
     </main>
-    <section id="pollDialog" class="poll-dialog" hidden aria-live="polite">
-      <div class="poll-panel"><strong id="pollQuestion"></strong><div id="pollOptions"></div><p id="pollStatus"></p></div>
+    <section id="pollDialog" class="poll-dialog" hidden aria-hidden="true" aria-live="polite">
+      <div class="poll-panel" role="dialog" aria-modal="true" aria-labelledby="pollQuestion" aria-describedby="pollStatus">
+        <strong id="pollQuestion"></strong>
+        <div id="pollOptions"></div>
+        <p id="pollStatus"></p>
+      </div>
+    </section>
+    <section id="identityDialog" class="identity-dialog" role="dialog" aria-modal="true" aria-hidden="true" hidden aria-labelledby="identityTitle" aria-describedby="identityHint">
+      <form id="identityForm" class="identity-panel">
+        <h2 id="identityTitle">加入现场互动</h2>
+        <p id="identityHint">请输入昵称，之后会自动记住你的身份。</p>
+        <label for="identityNickname">昵称</label>
+        <input id="identityNickname" maxlength="18" placeholder="例如：小明" autocomplete="nickname" required />
+        <div class="identity-actions"><button id="randomNickname" class="secondary-button" type="button">随机昵称</button><button id="identitySubmit" class="primary-button" type="submit">进入互动</button></div>
+      </form>
     </section>
 
     <script src="/js/pdf-reader.js"></script>

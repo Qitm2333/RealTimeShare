@@ -13,7 +13,17 @@
   const pollQuestion = document.getElementById('pollQuestion');
   const pollOptions = document.getElementById('pollOptions');
   const pollStatus = document.getElementById('pollStatus');
+  const identityDialog = document.getElementById('identityDialog');
+  const identityForm = document.getElementById('identityForm');
+  const identityNickname = document.getElementById('identityNickname');
+  const randomNickname = document.getElementById('randomNickname');
+  const identitySubmit = document.getElementById('identitySubmit');
+  const identityHint = document.getElementById('identityHint');
+  const identityChip = document.getElementById('identityChip');
+  const nicknameDisplay = document.getElementById('nicknameDisplay');
+  const userIdDisplay = document.getElementById('userIdDisplay');
   let activePoll = null;
+  let pendingVoteIndex = null;
   const pdfReader = new window.ContinuousPdfReader({
     container: document.getElementById('readerViewport'),
     emptyState: document.getElementById('readerEmpty')
@@ -32,11 +42,20 @@
   let activeView = 'interaction';
   const identityStorageKey = 'live-share-identity';
   let identity = loadIdentity();
+  let identityReady = Boolean(identity.userId && identity.nickname);
+  let identityConfirmed = false;
+  let identitySubmitting = false;
+  const randomNames = ['小星星', '小太阳', '小火花', '小月亮', '小海豚', '小树苗', '小鲸鱼', '小橘子'];
 
   function loadIdentity() {
     try {
       const saved = JSON.parse(localStorage.getItem(identityStorageKey) || 'null');
-      return saved && typeof saved === 'object' ? saved : { userId: '', nickname: '' };
+      if (!saved || typeof saved !== 'object') return { userId: '', nickname: '' };
+      const savedNickname = String(saved.nickname || '').replace(/\s+/g, ' ').trim().slice(0, 18);
+      const savedUserId = /^u_[a-f0-9]{16}$/.test(String(saved.userId || '')) ? String(saved.userId) : '';
+      return savedNickname && savedUserId
+        ? { userId: savedUserId, nickname: savedNickname }
+        : { userId: '', nickname: savedNickname };
     } catch (error) {
       return { userId: '', nickname: '' };
     }
@@ -44,8 +63,29 @@
 
   function saveIdentity(nextIdentity) {
     identity = nextIdentity;
+    identityReady = Boolean(identity.userId && identity.nickname);
+    identityConfirmed = identityReady;
+    identitySubmitting = false;
     localStorage.setItem(identityStorageKey, JSON.stringify(identity));
     nickname.value = identity.nickname || '';
+    nickname.readOnly = true;
+    identityChip.hidden = !identityReady;
+    nicknameDisplay.textContent = identity.nickname || '';
+    const shortId = String(identity.userId || '').replace(/^u_/, '').slice(0, 6).toUpperCase();
+    userIdDisplay.textContent = shortId ? `#${shortId}` : '';
+    identityChip.title = identity.userId ? `当前身份：${identity.nickname} · ${identity.userId}` : '当前浏览器身份';
+    updateIdentityDialogState();
+  }
+
+  function updateIdentityDialogState() {
+    const hasPersistentIdentity = Boolean(identity.userId);
+    const locked = hasPersistentIdentity || identitySubmitting;
+    identityNickname.readOnly = locked;
+    identityNickname.setAttribute('aria-readonly', String(locked));
+    randomNickname.hidden = hasPersistentIdentity;
+    randomNickname.disabled = locked;
+    identitySubmit.disabled = identitySubmitting;
+    identitySubmit.textContent = hasPersistentIdentity ? '确认身份' : '进入互动';
   }
 
   function renderGiftButtons() {
@@ -93,7 +133,7 @@
     giftsById = Object.fromEntries(giftList.map((gift) => [gift.id, gift]));
     renderGiftButtons();
     effectControls.forEach((control) => {
-      control.disabled = !isConnected();
+      control.disabled = !isConnected() || !identityConfirmed;
     });
   }
 
@@ -145,18 +185,43 @@
   }
 
   function showPoll(poll) {
-    activePoll = poll;
-    pollDialog.hidden = !poll;
-    if (!poll) return;
-    pollQuestion.textContent = poll.question;
+    activePoll = poll && poll.id ? poll : null;
+    pollDialog.hidden = !activePoll || !identityConfirmed;
+    pollDialog.setAttribute('aria-hidden', String(pollDialog.hidden));
+    if (!activePoll) {
+      pollQuestion.textContent = '';
+      pollOptions.textContent = '';
+      pollStatus.textContent = '';
+      return;
+    }
+    pollQuestion.textContent = activePoll.question || '现场投票';
     pollOptions.textContent = '';
-    poll.options.forEach((option, index) => {
+    const savedVotes = loadPollVotes();
+    const hasVoted = Boolean(activePoll.hasVoted) || Object.prototype.hasOwnProperty.call(savedVotes, activePoll.id);
+    const options = Array.isArray(activePoll.options) ? activePoll.options : [];
+    options.forEach((option, index) => {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = option;
-      button.addEventListener('click', () => { websocket?.send(JSON.stringify({ type: 'poll-vote', optionIndex: index })); pollStatus.textContent = '已提交'; [...pollOptions.children].forEach((item) => { item.disabled = true; }); });
+      button.disabled = hasVoted || pendingVoteIndex !== null || Boolean(activePoll.ended);
+      button.classList.toggle('is-selected', Number(activePoll.selectedOptionIndex) === index || savedVotes[activePoll.id] === index);
+      button.addEventListener('click', () => {
+        if (!isConnected() || hasVoted || pendingVoteIndex !== null) return;
+        pendingVoteIndex = index;
+        pollStatus.textContent = '正在提交…';
+        button.disabled = true;
+        websocket.send(JSON.stringify({ type: 'poll-vote', pollId: activePoll.id, optionIndex: index }));
+      });
       pollOptions.appendChild(button);
     });
-    pollStatus.textContent = poll.ended ? '投票已结束' : '';
+    pollStatus.textContent = activePoll.ended ? '投票已结束' : hasVoted ? '已提交' : '';
+  }
+
+  function loadPollVotes() {
+    try { return JSON.parse(localStorage.getItem('live-share-poll-votes') || '{}'); } catch (error) { return {}; }
+  }
+
+  function savePollVote(pollId, optionIndex) {
+    const votes = loadPollVotes(); votes[pollId] = optionIndex; localStorage.setItem('live-share-poll-votes', JSON.stringify(votes));
   }
 
   function setDanmuCooldown() {
@@ -164,11 +229,15 @@
 
     clearTimeout(danmuCooldownTimer);
     danmuCooldownTimer = setTimeout(() => {
-      sendButton.disabled = !isConnected();
+      sendButton.disabled = !isConnected() || !identityConfirmed;
     }, danmuCooldownMs);
   }
 
   function send(payload, options = {}) {
+    if (!identityConfirmed) {
+      showIdentityDialog();
+      return;
+    }
     if (!isConnected()) {
       setStatus('未连接', 'is-offline');
       return;
@@ -211,6 +280,7 @@
   }
 
   function connectWebSocket() {
+    if (websocket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(websocket.readyState)) return;
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
     websocket = new WebSocket(`${protocol}://${location.host}`);
 
@@ -220,11 +290,11 @@
 
     websocket.addEventListener('open', () => {
       websocket.send(JSON.stringify({ type: 'role', role: 'audience' }));
-      websocket.send(JSON.stringify({ type: 'identify', userId: identity.userId, nickname: getUser() }));
+      if (identityReady) websocket.send(JSON.stringify({ type: 'identify', userId: identity.userId, nickname: getUser() }));
       setStatus('已连接', 'is-online');
-      sendButton.disabled = false;
+      sendButton.disabled = !identityConfirmed;
       effectControls.forEach((control) => {
-        control.disabled = false;
+        control.disabled = !identityConfirmed;
       });
     });
 
@@ -243,6 +313,10 @@
 
       if (message.type === 'identity' && message.user) {
         saveIdentity(message.user);
+        identityDialog.hidden = true;
+        identityDialog.setAttribute('aria-hidden', 'true');
+        controls.forEach((control) => { control.disabled = false; });
+        if (activePoll) showPoll(activePoll);
       }
 
       if (message.type === 'config' && message.status === 'gifts') {
@@ -257,9 +331,25 @@
         applyDocumentState({ ...documentInfo, audienceMode: message.mode });
       }
       if (['poll-start', 'poll-state'].includes(message.type)) showPoll(message.poll);
-      if (message.type === 'poll-end') showPoll(null);
-      if (message.type === 'poll-voted') pollStatus.textContent = '已提交';
-      if (message.type === 'poll-close') showPoll(null);
+      if (message.type === 'poll-end') { pendingVoteIndex = null; showPoll(null); }
+      if (message.type === 'poll-voted') { pendingVoteIndex = null; savePollVote(message.pollId, message.optionIndex); if (activePoll) showPoll({ ...activePoll, hasVoted: true, selectedOptionIndex: message.optionIndex }); }
+      if (message.type === 'poll-vote-rejected') {
+        pendingVoteIndex = null;
+        if (message.reason === 'already-voted' && activePoll) {
+          savePollVote(message.pollId, message.optionIndex);
+          showPoll({ ...activePoll, hasVoted: true, selectedOptionIndex: message.optionIndex });
+        } else if (activePoll) {
+          showPoll(activePoll);
+          pollStatus.textContent = message.reason === 'invalid-vote' ? '投票已失效，请重新选择' : '提交失败，请重试';
+        }
+      }
+      if (message.type === 'poll-close') { pendingVoteIndex = null; showPoll(null); }
+      if (message.type === 'system' && message.status === 'identity-required') {
+        identityConfirmed = false;
+        identitySubmitting = false;
+        controls.forEach((control) => { control.disabled = true; });
+        showIdentityDialog();
+      }
     });
 
     websocket.addEventListener('close', () => {
@@ -267,6 +357,12 @@
       controls.forEach((control) => {
         control.disabled = true;
       });
+      identityConfirmed = false;
+      if (identitySubmitting) {
+        identitySubmitting = false;
+        updateIdentityDialogState();
+        if (!identity.userId) showIdentityDialog();
+      }
       setTimeout(connectWebSocket, 1200);
     });
 
@@ -289,11 +385,52 @@
   });
 
   nickname.value = identity.nickname || '';
-  nickname.addEventListener('change', () => {
-    if (identity.userId && isConnected()) {
-      websocket.send(JSON.stringify({ type: 'identify', userId: identity.userId, nickname: getUser() }));
+  updateIdentityDialogState();
+  if (identityReady) {
+    identityChip.hidden = false;
+    nicknameDisplay.textContent = identity.nickname;
+    userIdDisplay.textContent = `#${String(identity.userId).replace(/^u_/, '').slice(0, 6).toUpperCase()}`;
+    identityChip.title = `当前身份：${identity.nickname} · ${identity.userId}`;
+  }
+
+  function showIdentityDialog() {
+    identityDialog.hidden = false;
+    identityDialog.setAttribute('aria-hidden', 'false');
+    identityHint.textContent = identity.userId ? '此浏览器已绑定现场身份，昵称不可修改。' : identitySubmitting ? '正在确认你的身份，请稍候。' : '请输入昵称，之后会自动记住你的身份。';
+    identityNickname.value = identity.nickname || nickname.value || '';
+    updateIdentityDialogState();
+    window.setTimeout(() => identityNickname.focus(), 0);
+  }
+
+  function makeRandomNickname() {
+    const name = `${randomNames[Math.floor(Math.random() * randomNames.length)]}${Math.floor(100 + Math.random() * 900)}`;
+    identityNickname.value = name;
+  }
+
+  identityForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (identitySubmitting) return;
+    const nextNickname = identityNickname.value.replace(/\s+/g, ' ').trim().slice(0, 18);
+    if (!nextNickname) return;
+    if (identity.userId && nextNickname !== identity.nickname) {
+      identityNickname.value = identity.nickname;
+      return;
+    }
+    nickname.value = nextNickname;
+    identity.nickname = nextNickname;
+    identityReady = Boolean(nextNickname);
+    identityConfirmed = false;
+    identitySubmitting = true;
+    identityHint.textContent = '正在确认你的身份…';
+    updateIdentityDialogState();
+    controls.forEach((control) => { control.disabled = true; });
+    if (isConnected()) {
+      websocket.send(JSON.stringify({ type: 'identify', userId: identity.userId || '', nickname: nextNickname }));
+    } else {
+      identityHint.textContent = '等待连接现场…';
     }
   });
+  randomNickname.addEventListener('click', makeRandomNickname);
 
   messageInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -307,6 +444,9 @@
 
   Promise.all([loadGifts(), loadDocumentState()]).then(() => {
     setActiveView('interaction');
+    if (!identityReady) showIdentityDialog();
     connectWebSocket();
   });
+
+  nickname.readOnly = true;
 })();

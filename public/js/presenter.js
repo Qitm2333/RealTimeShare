@@ -51,10 +51,32 @@
   const pollSave = document.getElementById('pollSave');
   const pollLaunch = document.getElementById('pollLaunch');
   const pollEndButton = document.getElementById('pollEnd');
+  const pollClearButton = document.getElementById('pollClear');
   const pollLive = document.getElementById('pollLive');
+  const toolsScrim = pollPanel.querySelector('[data-tools-close]');
+  const toolsCard = pollPanel.querySelector('.tools-card');
+  const toolTabs = Array.from(pollPanel.querySelectorAll('[data-tool-tab]'));
+  const toolViews = Array.from(pollPanel.querySelectorAll('[data-tool-view]'));
+  const rankingSummary = document.getElementById('rankingSummary');
+  const rankingList = document.getElementById('rankingList');
+  const lotterySummary = document.getElementById('lotterySummary');
+  const lotteryCount = document.getElementById('lotteryCount');
+  const lotteryDraw = document.getElementById('lotteryDraw');
+  const lotteryResult = document.getElementById('lotteryResult');
   let activePoll;
   let selectedPreset = 0;
-  const pollPresetsData = JSON.parse(localStorage.getItem('live-share-poll-presets') || '[]');
+  let pollPresetsData = [];
+  try {
+    const savedPresets = JSON.parse(localStorage.getItem('live-share-poll-presets') || '[]');
+    pollPresetsData = Array.isArray(savedPresets) ? savedPresets : [];
+  } catch (error) {
+    pollPresetsData = [];
+  }
+  let activeTool = 'poll';
+  let latestRankingStats = { totals: { gifts: 0, danmu: 0 }, ranking: [] };
+  let lotteryResultData = null;
+  let toolsPreviousFocus = null;
+  let pollLaunchPending = false;
 
   const trackCount = 5;
   const manualAudienceUrlKey = 'live-share-manual-audience-url';
@@ -71,16 +93,168 @@
   let audienceMode = 'reader';
   let lastStats;
   let fullscreenUiTimer;
+  let lastFullscreenState = false;
+  let fullscreenLayoutFrame = 0;
 
   function renderPoll(poll) {
-    activePoll = poll;
-    pollLive.hidden = !poll;
-    pollEditor.hidden = Boolean(poll);
-    pollLaunch.hidden = Boolean(poll);
-    pollEndButton.hidden = !poll || poll.ended;
-    if (!poll) return;
-    const total = Number(poll.total || 0);
-    pollLive.innerHTML = `<strong>${poll.question}</strong>${poll.options.map((option, index) => `<div class="poll-result"><span>${option}</span><span>${total ? Math.round((poll.counts[index] || 0) / total * 100) : 0}%</span></div>`).join('')}<small>已参与 ${total} 人</small>`;
+    activePoll = poll && poll.id ? poll : null;
+    const hasPoll = Boolean(activePoll);
+    pollLive.hidden = !hasPoll;
+    pollEditor.hidden = hasPoll;
+    pollLaunch.hidden = hasPoll;
+    pollEndButton.hidden = !hasPoll || Boolean(activePoll.ended);
+    pollClearButton.hidden = !hasPoll || !activePoll.ended;
+    pollLaunch.disabled = false;
+    pollLaunch.textContent = '发起投票';
+    pollLaunchPending = false;
+    pollEndButton.disabled = false;
+    pollClearButton.disabled = false;
+    if (!hasPoll) {
+      pollLive.textContent = '';
+      return;
+    }
+
+    const options = Array.isArray(activePoll.options) ? activePoll.options : [];
+    const counts = Array.isArray(activePoll.counts) ? activePoll.counts : [];
+    const total = Math.max(0, Number(activePoll.total || 0));
+    pollLive.textContent = '';
+    const title = document.createElement('strong');
+    title.textContent = activePoll.question || '投票结果';
+    pollLive.appendChild(title);
+    options.forEach((option, index) => {
+      const percent = total ? Math.round((Number(counts[index] || 0) / total) * 100) : 0;
+      const row = document.createElement('div');
+      row.className = 'poll-result';
+      const label = document.createElement('span');
+      label.textContent = option;
+      const value = document.createElement('span');
+      value.textContent = `${percent}%`;
+      const bar = document.createElement('div');
+      bar.className = 'poll-result-bar';
+      const fill = document.createElement('span');
+      fill.style.width = `${percent}%`;
+      bar.appendChild(fill);
+      row.append(label, value, bar);
+      pollLive.appendChild(row);
+    });
+    const summary = document.createElement('small');
+    summary.textContent = `已参与 ${total} 人${activePoll.ended ? ' · 投票已结束' : ''}`;
+    pollLive.appendChild(summary);
+  }
+
+  function handlePollError(message) {
+    pollLaunchPending = false;
+    pollLaunch.disabled = false;
+    pollLaunch.textContent = '发起投票';
+    pollEndButton.disabled = false;
+    pollClearButton.disabled = false;
+
+    const messages = {
+      'invalid-poll': '问题和选项填写不完整',
+      'already-active': '当前已有进行中的投票',
+      'no-active-poll': '当前没有进行中的投票',
+      'already-ended': '这场投票已经结束'
+    };
+    toast.textContent = messages[message?.reason] || '投票操作失败';
+
+    // When the server has a newer poll state, prefer it over the local editor
+    // so a stale presenter tab cannot accidentally overwrite an active poll.
+    if (message?.poll) {
+      renderPoll(message.poll);
+    } else if (message?.reason === 'no-active-poll') {
+      renderPoll(null);
+    }
+  }
+
+  function requestRankingStats() {
+    if (websocket?.readyState === WebSocket.OPEN) {
+      websocket.send(JSON.stringify({ type: 'interaction-ranking-request' }));
+    }
+  }
+
+  function setToolTab(tool) {
+    const nextTool = ['poll', 'ranking', 'lottery'].includes(tool) ? tool : 'poll';
+    activeTool = nextTool;
+    toolTabs.forEach((tab) => {
+      const active = tab.dataset.toolTab === nextTool;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', String(active));
+    });
+    toolViews.forEach((view) => {
+      view.hidden = view.dataset.toolView !== nextTool;
+    });
+    if (nextTool === 'ranking' || nextTool === 'lottery') requestRankingStats();
+  }
+
+  function formatUserLabel(user) {
+    if (!user) return '匿名';
+    if (user.label) return String(user.label);
+    const nickname = user.nickname || '匿名';
+    const shortId = user.shortId || (user.userId ? String(user.userId).replace(/^u_/, '').slice(0, 6).toUpperCase() : '');
+    return shortId ? `${nickname} · #${shortId}` : nickname;
+  }
+
+  function renderRanking(statsPayload = latestRankingStats) {
+    latestRankingStats = statsPayload && typeof statsPayload === 'object' ? statsPayload : latestRankingStats;
+    const totals = latestRankingStats.totals || { gifts: 0, danmu: 0 };
+    const ranking = Array.isArray(latestRankingStats.ranking) ? latestRankingStats.ranking : [];
+    const giftTotal = Math.max(0, Number(totals.gifts || 0));
+    const danmuTotal = Math.max(0, Number(totals.danmu || 0));
+    rankingSummary.textContent = `礼物 ${giftTotal} · 弹幕 ${danmuTotal} · ${ranking.length} 位参与者`;
+    lotterySummary.textContent = ranking.length ? `可抽取用户 ${ranking.length} 位 · 礼物 ${giftTotal} · 弹幕 ${danmuTotal}` : '暂无可抽取用户';
+    lotteryDraw.disabled = !ranking.length || websocket?.readyState !== WebSocket.OPEN;
+    rankingList.textContent = '';
+    if (!ranking.length) {
+      const empty = document.createElement('p');
+      empty.className = 'tool-empty';
+      empty.textContent = '暂无互动数据';
+      rankingList.appendChild(empty);
+      return;
+    }
+    ranking.slice(0, 20).forEach((user, index) => {
+      const row = document.createElement('div');
+      row.className = 'ranking-row';
+      const rank = document.createElement('b');
+      rank.className = 'ranking-rank';
+      rank.textContent = `#${user.rank || index + 1}`;
+      const info = document.createElement('div');
+      info.className = 'ranking-user';
+      const name = document.createElement('strong');
+      name.textContent = formatUserLabel(user);
+      if (user.userId) name.title = `${user.nickname || '匿名'} · ${user.userId}`;
+      const counts = document.createElement('small');
+      counts.textContent = `礼物 ${Number(user.giftCount || 0)} · 弹幕 ${Number(user.danmuCount || 0)}`;
+      info.append(name, counts);
+      const score = document.createElement('strong');
+      score.className = 'ranking-score';
+      score.textContent = `${Number(user.score || 0).toFixed(1)}%`;
+      row.append(rank, info, score);
+      rankingList.appendChild(row);
+    });
+  }
+
+  function renderLotteryResult(result) {
+    lotteryResultData = result || null;
+    lotteryResult.hidden = !lotteryResultData;
+    lotteryResult.textContent = '';
+    lotteryDraw.disabled = !latestRankingStats.ranking?.length || websocket?.readyState !== WebSocket.OPEN;
+    lotteryDraw.textContent = '开始抽奖';
+    if (!lotteryResultData) return;
+    const title = document.createElement('strong');
+    title.textContent = `中奖用户${result.winners?.length ? ` · ${result.winners.length} 位` : ''}`;
+    lotteryResult.appendChild(title);
+    (Array.isArray(result.winners) ? result.winners : []).forEach((winner) => {
+      const row = document.createElement('div');
+      row.className = 'lottery-winner';
+      row.textContent = `${formatUserLabel(winner)} · 权重 ${Number(winner.score || 0).toFixed(1)}%`;
+      lotteryResult.appendChild(row);
+    });
+  }
+
+  function formatActor(message) {
+    const nickname = message?.nickname || message?.user || '匿名';
+    const userId = message?.userId || '';
+    return userId ? `${nickname} · #${String(userId).replace(/^u_/, '').slice(0, 6).toUpperCase()}` : nickname;
   }
 
   function renderPresets() {
@@ -92,9 +266,78 @@
     }
   }
 
-  function getPollOptions() { return Array.from(pollOptionsInput.querySelectorAll('input')).map((input) => input.value.trim()).filter(Boolean).slice(0, 6); }
-  function refreshOptionLabels() { const rows = pollOptionsInput.querySelectorAll('.poll-option-row'); rows.forEach((row, index) => { row.querySelector('input').placeholder = `选项 ${index + 1}`; row.querySelector('button').disabled = rows.length <= 2; }); }
-  function renderOptionInputs(options = []) { pollOptionsInput.textContent = ''; const values = options.length ? options : ['', '']; values.forEach((value, index) => { const row = document.createElement('div'); row.className = 'poll-option-row'; const input = document.createElement('input'); input.maxLength = 40; input.placeholder = `选项 ${index + 1}`; input.value = value; const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '×'; remove.disabled = values.length <= 2; remove.addEventListener('click', () => { row.remove(); refreshOptionLabels(); }); row.append(input, remove); pollOptionsInput.appendChild(row); }); }
+  function getPollOptions() {
+    const seen = new Set();
+    return Array.from(pollOptionsInput.querySelectorAll('input'))
+      .map((input) => input.value.replace(/\s+/g, ' ').trim())
+      .filter((option) => {
+        const key = option.toLocaleLowerCase();
+        if (!option || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 6);
+  }
+  function getPollOptionDrafts() { return Array.from(pollOptionsInput.querySelectorAll('input')).map((input) => input.value).slice(0, 6); }
+  function refreshOptionLabels() {
+    const rows = pollOptionsInput.querySelectorAll('.poll-option-row');
+    rows.forEach((row, index) => {
+      row.querySelector('input').placeholder = `选项 ${index + 1}`;
+      row.querySelector('button').disabled = rows.length <= 2;
+    });
+    pollAddOption.disabled = rows.length >= 6;
+  }
+  function renderOptionInputs(options = []) {
+    pollOptionsInput.textContent = '';
+    const values = Array.isArray(options) && options.length ? options : ['', ''];
+    values.slice(0, 6).forEach((value) => {
+      const row = document.createElement('div');
+      row.className = 'poll-option-row';
+      const input = document.createElement('input');
+      input.maxLength = 40;
+      input.value = value;
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.addEventListener('click', () => { row.remove(); refreshOptionLabels(); });
+      row.append(input, remove);
+      pollOptionsInput.appendChild(row);
+    });
+    refreshOptionLabels();
+  }
+
+  function setToolsOpen(expanded) {
+    const next = Boolean(expanded);
+    if (next === !pollPanel.hidden) {
+      return;
+    }
+
+    if (next) {
+      toolsPreviousFocus = document.activeElement;
+      pollPanel.hidden = false;
+      pollPanel.setAttribute('aria-hidden', 'false');
+      pollToggle.setAttribute('aria-expanded', 'true');
+      pollToggle.classList.add('is-open');
+      revealFullscreenUi();
+      setToolTab(activeTool);
+      if (!pollPresets.children.length && !activePoll) {
+        renderPresets();
+        pollPresets.querySelector('button')?.click();
+      }
+      window.requestAnimationFrame(() => toolsCard?.focus({ preventScroll: true }));
+      return;
+    }
+
+    pollPanel.hidden = true;
+    pollPanel.setAttribute('aria-hidden', 'true');
+    pollToggle.setAttribute('aria-expanded', 'false');
+    pollToggle.classList.remove('is-open');
+    revealFullscreenUi();
+    if (toolsPreviousFocus && typeof toolsPreviousFocus.focus === 'function') {
+      toolsPreviousFocus.focus({ preventScroll: true });
+    }
+    toolsPreviousFocus = null;
+  }
 
   function setConnectionStatus(text) {
     connectionText = text;
@@ -119,6 +362,16 @@
     const stage = document.querySelector('.stage');
     stage?.classList.toggle('is-presentation-fullscreen', isFullscreen);
 
+    if (isFullscreen !== lastFullscreenState) {
+      lastFullscreenState = isFullscreen;
+      window.cancelAnimationFrame(fullscreenLayoutFrame);
+      fullscreenLayoutFrame = window.requestAnimationFrame(() => {
+        if (pdfReader.pdf && !pdfReader.busy && pdfReader.fitMode !== 'custom') {
+          void pdfReader.renderPage().catch(() => {});
+        }
+      });
+    }
+
     if (!isFullscreen) {
       stage?.classList.remove('is-ui-hidden');
       window.clearTimeout(fullscreenUiTimer);
@@ -127,6 +380,9 @@
 
     stage?.classList.remove('is-ui-hidden');
     window.clearTimeout(fullscreenUiTimer);
+    if (!pollPanel.hidden) {
+      return;
+    }
     fullscreenUiTimer = window.setTimeout(() => {
       stage?.classList.add('is-ui-hidden');
     }, 1800);
@@ -365,7 +621,7 @@
     const top = Math.min(layerHeight - 46, track * trackHeight + 8);
 
     item.className = 'danmu';
-    item.textContent = `${message.user}: ${message.content}`;
+    item.textContent = `${formatActor(message)}: ${message.content}`;
     item.style.top = `${top}px`;
     item.style.animationDuration = `${8 + Math.random() * 2.5}s`;
 
@@ -381,7 +637,7 @@
     }
 
     if (!giftEffectsEnabled) {
-      toast.textContent = `${message.user} ${gift.toast}，本场第 ${message.count || 1} 个`;
+      toast.textContent = `${formatActor(message)} ${gift.toast}，本场第 ${message.count || 1} 个`;
       recordEffectBurst(message.effect);
       return;
     }
@@ -424,7 +680,7 @@
       { once: true }
     );
     window.setTimeout(() => item.remove(), Math.ceil(effectConfig.duration * 1000) + 300);
-    toast.textContent = `${message.user} ${gift.toast}，本场第 ${message.count || 1} 个`;
+    toast.textContent = `${formatActor(message)} ${gift.toast}，本场第 ${message.count || 1} 个`;
     recordEffectBurst(message.effect);
   }
 
@@ -555,9 +811,12 @@
 
   function updateStats(stats) {
     lastStats = stats;
-    const danmu = Number(stats?.danmu || 0);
+    const danmu = Math.max(0, Number(stats?.totals?.danmu ?? stats?.danmu ?? 0) || 0);
     const giftStats = stats?.gifts || {};
-    const giftTotal = giftList.reduce((total, gift) => total + Number(giftStats[gift.id] || 0), 0);
+    const persistedGiftTotal = Number(stats?.totals?.gifts);
+    const giftTotal = Number.isFinite(persistedGiftTotal)
+      ? Math.max(0, persistedGiftTotal)
+      : giftList.reduce((total, gift) => total + Number(giftStats[gift.id] || 0), 0);
     const topGift = giftList.reduce(
       (top, gift) => {
         const count = Number(giftStats[gift.id] || 0);
@@ -670,6 +929,7 @@
   }
 
   function connectWebSocket() {
+    if (websocket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(websocket.readyState)) return;
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
     websocket = new WebSocket(`${protocol}://${location.host}`);
 
@@ -699,6 +959,10 @@
         updateStats(message.stats);
       }
 
+      if (message.type === 'interaction-ranking') {
+        renderRanking(message.stats);
+      }
+
       if (message.type === 'config' && message.status === 'gifts') {
         applyGifts(message.gifts);
       }
@@ -715,21 +979,55 @@
         setAudienceCount(message.clients);
       }
 
+      if (message.type === 'system' && message.status === 'unauthorized') {
+        setConnectionStatus('请先登录');
+      }
+
       if (['poll-start', 'poll-update', 'poll-end', 'poll-state'].includes(message.type)) {
         renderPoll(message.poll);
       }
+      if (message.type === 'poll-error') {
+        handlePollError(message);
+      }
       if (message.type === 'poll-close') {
         renderPoll(null);
+      }
+
+      if (message.type === 'lottery-result') {
+        renderLotteryResult(message.result);
+        setToolTab('lottery');
+        const winners = Array.isArray(message.result?.winners) ? message.result.winners : [];
+        toast.textContent = winners.length ? winners.map(formatUserLabel).join('、') + ' 中奖' : '抽奖完成';
+      }
+
+      if (message.type === 'lottery-error') {
+        toast.textContent = message.reason === 'no-participants' ? '暂无可抽取用户' : '抽奖参数无效';
+        lotteryDraw.textContent = '开始抽奖';
+        lotteryDraw.disabled = !latestRankingStats.ranking?.length || websocket?.readyState !== WebSocket.OPEN;
       }
     });
 
     websocket.addEventListener('close', () => {
       setConnectionStatus('重连中');
+      pollLaunchPending = false;
+      pollLaunch.disabled = false;
+      pollLaunch.textContent = '发起投票';
+      pollEndButton.disabled = false;
+      pollClearButton.disabled = false;
+      lotteryDraw.disabled = true;
+      lotteryDraw.textContent = '开始抽奖';
       setTimeout(connectWebSocket, 1200);
     });
 
     websocket.addEventListener('error', () => {
       setConnectionStatus('连接异常');
+      pollLaunchPending = false;
+      pollLaunch.disabled = false;
+      pollLaunch.textContent = '发起投票';
+      pollEndButton.disabled = false;
+      pollClearButton.disabled = false;
+      lotteryDraw.disabled = true;
+      lotteryDraw.textContent = '开始抽奖';
     });
   }
 
@@ -759,6 +1057,7 @@
       unlockPresenter();
       await loadDocument();
       await loadAudienceUrls();
+      connectWebSocket();
     } catch (error) {
       passwordError.hidden = false;
       passwordInput.select();
@@ -766,16 +1065,72 @@
   });
 
   document.addEventListener('keydown', handlePdfKey);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !pollPanel.hidden) {
+      event.preventDefault();
+      setToolsOpen(false);
+    }
+  });
   document.addEventListener('fullscreenchange', revealFullscreenUi);
   window.addEventListener('resize', revealFullscreenUi);
   window.addEventListener('pointermove', handleFullscreenPointer);
   pdfInput.addEventListener('change', () => uploadPdf(pdfInput.files?.[0]));
-  pollToggle.addEventListener('click', () => { pollPanel.hidden = !pollPanel.hidden; pollToggle.setAttribute('aria-expanded', String(!pollPanel.hidden)); if (!pollPanel.hidden) { renderPresets(); pollPresets.querySelector('button')?.click(); } });
-  pollClose.addEventListener('click', () => { pollPanel.hidden = true; pollToggle.setAttribute('aria-expanded', 'false'); });
-  pollAddOption.addEventListener('click', () => { if (pollOptionsInput.querySelectorAll('input').length < 6) renderOptionInputs([...getPollOptions(), '']); });
-  pollSave.addEventListener('click', () => { const question = pollQuestionInput.value.trim(); const options = getPollOptions(); if (!question || options.length < 2) return; pollPresetsData[selectedPreset] = { question, options }; localStorage.setItem('live-share-poll-presets', JSON.stringify(pollPresetsData)); renderPresets(); });
-  pollLaunch.addEventListener('click', () => { const question = pollQuestionInput.value.trim(); const options = getPollOptions(); if (question && options.length >= 2) websocket?.send(JSON.stringify({ type: 'poll-start', question, options })); });
-  pollEndButton.addEventListener('click', () => websocket?.send(JSON.stringify({ type: 'poll-end' })));
+  pollToggle.addEventListener('click', () => setToolsOpen(pollPanel.hidden));
+  pollClose.addEventListener('click', () => setToolsOpen(false));
+  toolsScrim.addEventListener('click', () => setToolsOpen(false));
+  toolTabs.forEach((tab) => tab.addEventListener('click', () => setToolTab(tab.dataset.toolTab)));
+  pollAddOption.addEventListener('click', () => { if (pollOptionsInput.querySelectorAll('input').length < 6) renderOptionInputs([...getPollOptionDrafts(), '']); });
+  pollSave.addEventListener('click', () => {
+    const question = pollQuestionInput.value.replace(/\s+/g, ' ').trim().slice(0, 120);
+    const options = getPollOptions();
+    if (!question || options.length < 2) {
+      toast.textContent = '请先填写问题和至少两个选项';
+      return;
+    }
+    pollPresetsData[selectedPreset] = { question, options };
+    localStorage.setItem('live-share-poll-presets', JSON.stringify(pollPresetsData));
+    renderPresets();
+    toast.textContent = `预设 ${selectedPreset + 1} 已保存`;
+  });
+  pollLaunch.addEventListener('click', () => {
+    if (pollLaunchPending) return;
+    const question = pollQuestionInput.value.replace(/\s+/g, ' ').trim().slice(0, 120);
+    const options = getPollOptions();
+    if (!question || options.length < 2) {
+      toast.textContent = '请先填写问题和至少两个选项';
+      return;
+    }
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+      toast.textContent = '互动服务未连接';
+      return;
+    }
+    pollLaunchPending = true;
+    pollLaunch.disabled = true;
+    pollLaunch.textContent = '发起中…';
+    websocket.send(JSON.stringify({ type: 'poll-start', question, options }));
+  });
+  pollEndButton.addEventListener('click', () => {
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+      toast.textContent = '互动服务未连接';
+      return;
+    }
+    pollEndButton.disabled = true;
+    websocket.send(JSON.stringify({ type: 'poll-end' }));
+  });
+  pollClearButton.addEventListener('click', () => {
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+      toast.textContent = '互动服务未连接';
+      return;
+    }
+    pollClearButton.disabled = true;
+    websocket.send(JSON.stringify({ type: 'poll-close' }));
+  });
+  lotteryDraw.addEventListener('click', () => {
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) { toast.textContent = '互动服务未连接'; return; }
+    lotteryDraw.disabled = true;
+    lotteryDraw.textContent = '抽奖中…';
+    websocket.send(JSON.stringify({ type: 'lottery-draw', count: Number(lotteryCount.value), excludePrevious: true }));
+  });
   pdfRemove.addEventListener('click', async () => {
     if (!documentInfo?.available || !window.confirm('确定移除当前 PDF 吗？')) {
       return;
@@ -815,6 +1170,6 @@
       await loadDocument();
       await loadAudienceUrls();
     }
-    connectWebSocket();
+    if (authenticated) connectWebSocket();
   });
 })();

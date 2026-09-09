@@ -16,7 +16,7 @@
             <button id="pdfRemove" class="secondary-button danger-button" type="button" disabled>移除文件</button>
           </div>
           <div id="pdfStatus" class="pdf-status">未打开</div>
-          <button id="pollToggle" class="secondary-button" type="button" aria-expanded="false">投票</button>
+          <button id="pollToggle" class="secondary-button" type="button" aria-haspopup="dialog" aria-expanded="false">投票</button>
           <div class="audience-mode-panel" aria-label="观众内容模式">
             <span>观众内容</span>
             <button id="audienceModeToggle" type="button" aria-pressed="false">仅互动</button>
@@ -95,15 +95,37 @@
       </aside>
 
     </main>
-    <aside id="pollPanel" class="poll-panel" hidden aria-label="投票工作台">
-      <div class="poll-panel-head"><strong>投票</strong><button id="pollClose" type="button">×</button></div>
-      <div id="pollPresets" class="poll-presets"></div>
-      <div id="pollEditor" class="poll-editor">
-        <label>问题<input id="pollQuestionInput" maxlength="120" placeholder="输入投票问题" /></label>
-        <div class="poll-options-field"><span>选项</span><div id="pollOptionsInput" class="poll-option-list"></div><button id="pollAddOption" class="poll-add-option" type="button">＋ 添加选项</button></div>
-        <div class="poll-editor-actions"><button id="pollSave" type="button">保存预设</button><button id="pollLaunch" class="primary-button" type="button">发起投票</button><button id="pollEnd" class="danger-button" type="button" hidden>结束投票</button></div>
+    <aside id="pollPanel" class="tools-dialog" hidden aria-hidden="true" aria-label="现场互动工具">
+      <div class="tools-scrim" data-tools-close></div>
+      <div class="tools-card" role="dialog" aria-modal="true" aria-labelledby="toolsTitle" tabindex="-1">
+        <div class="poll-panel-head"><strong id="toolsTitle">现场互动</strong><button id="pollClose" type="button" aria-label="关闭">×</button></div>
+        <nav class="tools-tabs" aria-label="互动工具分类">
+          <button id="pollTab" class="is-active" type="button" data-tool-tab="poll" aria-controls="pollToolView" aria-selected="true">投票</button>
+          <button id="rankingTab" type="button" data-tool-tab="ranking" aria-controls="rankingToolView" aria-selected="false">排名</button>
+          <button id="lotteryTab" type="button" data-tool-tab="lottery" aria-controls="lotteryToolView" aria-selected="false">抽奖</button>
+        </nav>
+        <section id="pollToolView" data-tool-view="poll" aria-labelledby="pollTab">
+          <div id="pollPresets" class="poll-presets"></div>
+          <div id="pollEditor" class="poll-editor">
+            <label>问题<input id="pollQuestionInput" maxlength="120" placeholder="输入投票问题" /></label>
+            <div class="poll-options-field"><span>选项</span><div id="pollOptionsInput" class="poll-option-list"></div><button id="pollAddOption" class="poll-add-option" type="button">＋ 添加选项</button></div>
+            <div class="poll-editor-actions"><button id="pollSave" type="button">保存预设</button><button id="pollLaunch" class="primary-button" type="button">发起投票</button></div>
+          </div>
+          <div id="pollLive" class="poll-live" hidden aria-live="polite"></div>
+          <div class="poll-result-actions"><button id="pollEnd" class="danger-button" type="button" hidden>结束投票</button><button id="pollClear" type="button" hidden>关闭结果</button></div>
+        </section>
+        <section id="rankingToolView" data-tool-view="ranking" aria-labelledby="rankingTab" hidden>
+          <p class="tool-caption">权重 = 礼物 50% · 弹幕 50%（按本场占比计算）</p>
+          <div id="rankingSummary" class="ranking-summary"></div>
+          <div id="rankingList" class="ranking-list"><p class="tool-empty">暂无互动数据</p></div>
+        </section>
+        <section id="lotteryToolView" data-tool-view="lottery" aria-labelledby="lotteryTab" hidden>
+          <p class="tool-caption">抽奖权重与排行榜一致，仅演讲端可见。</p>
+          <div id="lotterySummary" class="lottery-summary">暂无可抽取用户</div>
+          <div class="lottery-controls"><label for="lotteryCount">抽取人数</label><select id="lotteryCount"><option value="1">1 位</option><option value="2">2 位</option><option value="3">3 位</option></select><button id="lotteryDraw" class="primary-button" type="button">开始抽奖</button></div>
+          <div id="lotteryResult" class="lottery-result" hidden></div>
+        </section>
       </div>
-      <div id="pollLive" class="poll-live" hidden></div>
     </aside>
 
     <div id="passwordDialog" class="password-dialog" role="dialog" aria-modal="true">
