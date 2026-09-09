@@ -718,7 +718,8 @@
     const track = chooseTrack();
 
     item.className = 'quick-danmu';
-    item.style.top = `${3 + track * 13 + Math.random() * 3}vh`;
+    item.style.left = `calc(100% - 150px - ${Math.round(Math.random() * 6)}vw)`;
+    item.style.top = `${8 + track * 13 + Math.random() * 3}vh`;
     item.style.animationDuration = `${6.2 + Math.random() * 1.4}s`;
     image.src = phrase.image;
     image.alt = phrase.text;
@@ -1036,7 +1037,7 @@
   }
 
   async function resetSession() {
-    const confirmed = window.confirm('确定重置现场吗？\n\n将移除当前 PDF，并清空所有用户的礼物数量。投票内容和用户数据会保留。');
+    const confirmed = window.confirm('确定重置现场吗？\n\n将移除当前 PDF，并清空本场弹幕、礼物、投票和用户数据。已保存的投票内容会保留。观众需要重新扫码入场。');
     if (!confirmed) return;
 
     sessionReset.disabled = true;
@@ -1048,7 +1049,7 @@
       applyDocument(result.document);
       updateStats(result.stats);
       clearSessionEffects();
-      toast.textContent = '现场已重置，投票内容和用户数据已保留';
+      toast.textContent = '现场已重置，请观众重新扫码入场';
     } catch (error) {
       toast.textContent = '重置失败，请重试';
     } finally {

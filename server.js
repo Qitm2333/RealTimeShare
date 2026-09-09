@@ -49,6 +49,7 @@ let audienceMode = 'reader';
 let activePoll = null;
 let documentState = readDocumentState();
 const users = loadUsers();
+const userCooldowns = new Map();
 
 function loadUsers() {
   try {
@@ -600,19 +601,34 @@ app.post('/api/session/reset', requirePresenter, (req, res) => {
     if (fs.existsSync(currentPdfPath)) fs.rmSync(currentPdfPath);
     documentState = readDocumentState();
 
+    interactionState.totals.danmu = 0;
     interactionState.totals.gifts = 0;
     interactionState.totals.giftById = Object.fromEntries(gifts.map((gift) => [gift.id, 0]));
-    Object.values(interactionState.users).forEach((user) => {
-      user.giftCount = 0;
-      user.gifts = {};
-    });
+    interactionState.users = {};
+    interactionState.sessionId = `session_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    interactionState.startedAt = Date.now();
+    users.clear();
+    persistUsers();
+    lotteryHistory.length = 0;
+    persistLotteryHistory();
+    activePoll = null;
+    persistPollState();
+    if (typeof userCooldowns !== 'undefined') userCooldowns.clear();
     persistInteractionState();
 
     const document = getDocumentPayload();
     const statsPayload = getPublicStatsPayload();
     broadcast({ type: 'document', document });
     broadcastStats();
+    broadcast({ type: 'poll-close' });
     broadcast({ type: 'system', status: 'session-reset' });
+    clients.forEach((client) => {
+      if (client.role === 'audience') {
+        client.userId = null;
+        client.nickname = '匿名';
+        setTimeout(() => client.close(4001, 'session-reset'), 30);
+      }
+    });
     res.json({ ok: true, document, stats: statsPayload });
   } catch (error) {
     res.status(500).json({ error: 'session_reset_failed' });
@@ -730,8 +746,6 @@ stats.giftById = stats.giftById || {};
 gifts.forEach((gift) => {
   if (!Object.prototype.hasOwnProperty.call(stats.giftById, gift.id)) stats.giftById[gift.id] = 0;
 });
-const userCooldowns = new Map();
-
 function getUserCooldown(userId) {
   if (!userCooldowns.has(userId)) userCooldowns.set(userId, { danmuAt: 0, quickDanmuAt: 0, effectAt: 0 });
   return userCooldowns.get(userId);

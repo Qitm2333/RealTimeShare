@@ -50,6 +50,7 @@
   let identityReady = Boolean(identity.userId && identity.nickname);
   let identityConfirmed = false;
   let identitySubmitting = false;
+  let resetRequired = false;
   const randomNames = ['小星星', '小太阳', '小火花', '小月亮', '小海豚', '小树苗', '小鲸鱼', '小橘子'];
 
   function loadIdentity() {
@@ -438,9 +439,27 @@
         controls.forEach((control) => { control.disabled = true; });
         showIdentityDialog();
       }
+      if (message.type === 'system' && message.status === 'session-reset') {
+        resetRequired = true;
+        pendingVoteIndex = null;
+        showPoll(null);
+        controls.forEach((control) => { control.disabled = true; });
+        localStorage.removeItem('live-share-identity');
+        localStorage.removeItem('live-share-poll-votes');
+        identity = { userId: '', nickname: '' };
+        identityReady = false;
+        identityConfirmed = false;
+        identitySubmitting = false;
+        identityChip.hidden = true;
+        nickname.value = '';
+        setStatus('现场已重置', 'is-offline');
+        showIdentityDialog();
+        websocket.close(4001, 'session-reset');
+      }
     });
 
     websocket.addEventListener('close', () => {
+      if (resetRequired) return;
       setStatus('重连中', 'is-offline');
       controls.forEach((control) => {
         control.disabled = true;
@@ -484,10 +503,23 @@
   function showIdentityDialog() {
     identityDialog.hidden = false;
     identityDialog.setAttribute('aria-hidden', 'false');
-    identityHint.textContent = identity.userId ? '此浏览器已绑定现场身份，昵称不可修改。' : identitySubmitting ? '正在确认你的身份，请稍候。' : '请输入昵称，之后会自动记住你的身份。';
+    identityHint.textContent = resetRequired
+      ? '现场已重置，请关闭本页面并重新扫码入场。'
+      : identity.userId
+        ? '此浏览器已绑定现场身份，昵称不可修改。'
+        : identitySubmitting
+          ? '正在确认你的身份，请稍候。'
+          : '请输入昵称，之后会自动记住你的身份。';
     identityNickname.value = identity.nickname || nickname.value || '';
     updateIdentityDialogState();
-    window.setTimeout(() => identityNickname.focus(), 0);
+    if (resetRequired) {
+      identityNickname.readOnly = true;
+      randomNickname.hidden = true;
+      identitySubmit.disabled = true;
+      identitySubmit.textContent = '请重新扫码';
+    } else {
+      window.setTimeout(() => identityNickname.focus(), 0);
+    }
   }
 
   function makeRandomNickname() {
@@ -497,6 +529,7 @@
 
   identityForm.addEventListener('submit', (event) => {
     event.preventDefault();
+    if (resetRequired) return;
     if (identitySubmitting) return;
     const nextNickname = identityNickname.value.replace(/\s+/g, ' ').trim().slice(0, 18);
     if (!nextNickname) return;

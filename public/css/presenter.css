@@ -393,10 +393,10 @@ body {
 
 .quick-danmu {
   position: absolute;
-  left: 100%;
+  left: auto;
   display: flex;
   align-items: center;
-  width: min(240px, 42vw);
+  width: min(150px, 26vw);
   pointer-events: none;
   animation: quick-fly-left linear forwards;
 }
@@ -412,7 +412,7 @@ body {
   from { transform: translateX(0) scale(0.92); opacity: 0; }
   8% { opacity: 1; }
   88% { opacity: 1; }
-  to { transform: translateX(calc(-100vw - 125%)) scale(1); opacity: 0; }
+  to { transform: translateX(calc(-100vw - 150px)) scale(1); opacity: 0; }
 }
 
 @keyframes fly-left {
