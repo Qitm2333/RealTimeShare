@@ -58,6 +58,8 @@
   const pollCancel = document.getElementById('pollCancel');
   const pollSave = document.getElementById('pollSave');
   const pollLaunch = document.getElementById('pollLaunch');
+  const pollExport = document.getElementById('pollExport');
+  const pollImport = document.getElementById('pollImport');
   const pollEndButton = document.getElementById('pollEnd');
   const pollClearButton = document.getElementById('pollClear');
   const pollLive = document.getElementById('pollLive');
@@ -122,6 +124,7 @@
     pollLaunchPending = false;
     pollEndButton.disabled = false;
     pollClearButton.disabled = false;
+    pollImport.disabled = hasPoll;
     if (!hasPoll) {
       pollLive.textContent = '';
       return;
@@ -313,6 +316,108 @@
     const question = pollQuestionInput.value.replace(/\s+/g, ' ').trim().slice(0, 120);
     const options = getPollOptions();
     return { question, options };
+  }
+
+  function getPollClipboardData() {
+    if (activePoll) {
+      return {
+        question: String(activePoll.question || '').trim(),
+        options: Array.isArray(activePoll.options) ? activePoll.options.map((option) => String(option || '').trim()).filter(Boolean).slice(0, 6) : []
+      };
+    }
+
+    if (pollEditing) {
+      return getSelectedPoll();
+    }
+
+    const preset = pollPresetsData[selectedPreset] || {};
+    return {
+      question: String(preset.question || '').trim(),
+      options: Array.isArray(preset.options) ? preset.options.map((option) => String(option || '').trim()).filter(Boolean).slice(0, 6) : []
+    };
+  }
+
+  async function copyTextToClipboard(text) {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return;
+      } catch (error) {
+        // Fall back for HTTP/LAN pages where Clipboard API permission is unavailable.
+      }
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand('copy');
+    textarea.remove();
+    if (!copied) throw new Error('clipboard_unavailable');
+  }
+
+  async function exportPollJson() {
+    const data = getPollClipboardData();
+    if (!data.question || data.options.length < 2) {
+      toast.textContent = '请先选择或填写一个完整投票';
+      return;
+    }
+
+    try {
+      await copyTextToClipboard(`${JSON.stringify(data, null, 2)}\n`);
+      toast.textContent = '投票 JSON 已复制';
+    } catch (error) {
+      toast.textContent = '复制失败，请检查剪贴板权限';
+    }
+  }
+
+  async function readClipboardText() {
+    if (navigator.clipboard?.readText) {
+      try {
+        return await navigator.clipboard.readText();
+      } catch (error) {
+        // Fall back to a native paste prompt when clipboard permission is blocked.
+      }
+    }
+
+    const pasted = window.prompt('请粘贴投票 JSON');
+    if (pasted === null) {
+      throw new Error('clipboard_cancelled');
+    }
+    return pasted;
+  }
+
+  async function importPollJson() {
+    if (activePoll) {
+      toast.textContent = '请先结束并关闭当前投票';
+      return;
+    }
+
+    try {
+      const raw = await readClipboardText();
+      const parsed = JSON.parse(raw);
+      const question = String(parsed?.question || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+      const seen = new Set();
+      const options = (Array.isArray(parsed?.options) ? parsed.options : [])
+        .map((option) => String(option || '').replace(/\s+/g, ' ').trim().slice(0, 40))
+        .filter((option) => option && !seen.has(option.toLocaleLowerCase()) && seen.add(option.toLocaleLowerCase()))
+        .slice(0, 6);
+      if (!question || options.length < 2) {
+        throw new Error('invalid_poll_json');
+      }
+
+      setPollEditing(true);
+      pollQuestionInput.value = question;
+      renderOptionInputs(options);
+      toast.textContent = '已读取剪贴板，请确认后保存';
+    } catch (error) {
+      toast.textContent = error.message === 'clipboard_cancelled'
+        ? '已取消粘贴'
+        : 'JSON 无效，请使用包含 question 和 options 的投票配置';
+    }
   }
 
   function launchPoll(question, options) {
@@ -1253,6 +1358,8 @@
     const { question, options } = getSelectedPoll();
     launchPoll(question, options);
   });
+  pollExport.addEventListener('click', exportPollJson);
+  pollImport.addEventListener('click', importPollJson);
   pollEndButton.addEventListener('click', () => {
     if (!websocket || websocket.readyState !== WebSocket.OPEN) {
       toast.textContent = '互动服务未连接';

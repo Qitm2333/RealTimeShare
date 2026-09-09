@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>现场互动分享 - 演讲端</title>
-    <link rel="stylesheet" href="/css/presenter.css" />
+    <link rel="stylesheet" href="/css/presenter.css?v=20260909-3" />
   </head>
   <body>
     <main class="stage">
@@ -106,6 +106,7 @@
           <button id="lotteryTab" type="button" data-tool-tab="lottery" aria-controls="lotteryToolView" aria-selected="false">抽奖</button>
         </nav>
         <section id="pollToolView" data-tool-view="poll" aria-labelledby="pollTab">
+          <div class="poll-clipboard-actions" aria-label="投票配置导入导出"><button id="pollExport" type="button" title="复制当前投票 JSON 到剪贴板">导出</button><button id="pollImport" type="button" title="从剪贴板读取投票 JSON">粘贴</button></div>
           <div id="pollHome" class="poll-home">
             <div id="pollEmpty" class="poll-empty" hidden>
               <strong>还没有投票内容</strong>
@@ -152,7 +153,7 @@
       </form>
     </div>
 
-    <script src="/js/pdf-reader.js"></script>
-    <script src="/js/presenter.js"></script>
+    <script src="/js/pdf-reader.js?v=20260909-3"></script>
+    <script src="/js/presenter.js?v=20260909-3"></script>
   </body>
 </html>
