@@ -304,6 +304,15 @@ h1 {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
+.download-button.is-disabled {
+  border-color: #dedee2;
+  background: #e8e8ed;
+  color: #98989d;
+  box-shadow: none;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .reader-viewport {
   display: flex;
   min-height: 320px;

@@ -241,7 +241,8 @@ body {
 .poll-panel-head button:hover { background: #e8e8ed; color: #1d1d1f; }
 .poll-panel-head button:focus-visible,
 .tools-tabs button:focus-visible,
-.poll-presets button:focus-visible,
+.poll-content-card:focus-visible,
+.poll-home-actions button:focus-visible,
 .poll-option-row button:focus-visible,
 .poll-add-option:focus-visible,
 .poll-editor-actions button:focus-visible,
@@ -251,9 +252,18 @@ body {
 .tools-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin: 14px 0; padding: 3px; border-radius: 9px; background: #f5f5f7; }
 .tools-tabs button { min-height: 36px; border: 0; border-radius: 7px; background: transparent; color: #6e6e73; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
 .tools-tabs button.is-active { background: #fff; color: #1d1d1f; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
-.poll-presets { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 12px 0; }
-.poll-presets button { min-height: 36px; border: 1px solid #d2d2d7; border-radius: 7px; background:#fff; cursor:pointer; }
-.poll-presets button.is-active { background:#0071e3; border-color:#0071e3; color:#fff; }
+.poll-home { display:grid; gap:14px; }
+.poll-empty { display:grid; min-height:190px; place-content:center; gap:6px; padding:24px; border:1px dashed #d2d2d7; border-radius:10px; background:#fafafa; text-align:center; }
+.poll-empty strong { font-size:17px; }
+.poll-empty span { color:#6e6e73; font-size:13px; }
+.poll-content-list { display:grid; gap:8px; max-height:390px; overflow:auto; }
+.poll-content-card { display:grid; gap:7px; width:100%; padding:13px 14px; border:1px solid #d2d2d7; border-radius:9px; background:#fff; color:#1d1d1f; text-align:left; cursor:pointer; }
+.poll-content-card strong { overflow:hidden; font-size:15px; text-overflow:ellipsis; white-space:nowrap; }
+.poll-content-card span { overflow:hidden; color:#6e6e73; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+.poll-content-card.is-active { border-color:#0071e3; box-shadow:0 0 0 2px rgba(0,113,227,.1); }
+.poll-home-actions { display:flex; justify-content:flex-end; gap:8px; }
+.poll-home-actions button { min-height:36px; padding:0 12px; border:1px solid #d2d2d7; border-radius:7px; background:#fff; color:#1d1d1f; font:inherit; font-size:13px; font-weight:800; cursor:pointer; }
+.poll-home-actions .primary-button { border-color:#0071e3; background:#0071e3; color:#fff; }
 .poll-editor { display:grid; gap:10px; }
 .poll-editor label { display:grid; gap:5px; color:#6e6e73; font-size:12px; font-weight:700; }
 .poll-editor input { width:100%; min-height:38px; padding:8px; border:1px solid #d2d2d7; border-radius:7px; font:inherit; }
@@ -271,7 +281,6 @@ body {
 .poll-result { position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; margin:10px 0; padding:10px 12px; border-radius:8px; background:#f5f5f7; }
 .poll-result-bar { grid-column:1 / -1; height:5px; overflow:hidden; border-radius:999px; background:#d2d2d7; }
 .poll-result-bar span { display:block; height:100%; border-radius:inherit; background:#0071e3; transition:width 180ms ease; }
-.poll-live small { display:block; margin-top:14px; color:#6e6e73; }
 .poll-result-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
 .poll-result-actions button { min-height:34px; padding:0 11px; border:1px solid #d2d2d7; border-radius:7px; background:#fff; color:#1d1d1f; font:inherit; font-size:12px; font-weight:800; cursor:pointer; }
 .poll-result-actions .danger-button { color:#b42318; }
@@ -297,8 +306,7 @@ body {
 @media (max-width: 560px) {
   .tools-card { padding: 14px; border-radius: 10px; }
   .tools-tabs { margin: 10px 0 12px; }
-  .poll-presets { gap: 5px; margin: 10px 0; }
-  .poll-presets button { min-height: 34px; }
+  .poll-content-list { max-height: 330px; }
   .lottery-controls { grid-template-columns: 1fr 86px; }
   .lottery-controls label { grid-column: 1 / -1; }
   .lottery-controls .primary-button { grid-column: 1 / -1; }
@@ -392,18 +400,6 @@ body {
   width: 100%;
   height: auto;
   filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.3));
-}
-
-.quick-danmu span {
-  position: absolute;
-  right: 8%;
-  bottom: 3%;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.72);
-  color: #fff;
-  font-size: 11px;
-  white-space: nowrap;
 }
 
 @keyframes quick-fly-left {

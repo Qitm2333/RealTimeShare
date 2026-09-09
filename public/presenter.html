@@ -105,11 +105,22 @@
           <button id="lotteryTab" type="button" data-tool-tab="lottery" aria-controls="lotteryToolView" aria-selected="false">抽奖</button>
         </nav>
         <section id="pollToolView" data-tool-view="poll" aria-labelledby="pollTab">
-          <div id="pollPresets" class="poll-presets"></div>
-          <div id="pollEditor" class="poll-editor">
+          <div id="pollHome" class="poll-home">
+            <div id="pollEmpty" class="poll-empty" hidden>
+              <strong>还没有投票内容</strong>
+              <span>创建一个投票，让观众参与进来</span>
+            </div>
+            <div id="pollContentList" class="poll-content-list"></div>
+            <div class="poll-home-actions">
+              <button id="pollEditButton" type="button" hidden>编辑投票</button>
+              <button id="pollCreate" type="button">创建投票</button>
+              <button id="pollStartSaved" class="primary-button" type="button" hidden>发起投票</button>
+            </div>
+          </div>
+          <div id="pollEditor" class="poll-editor" hidden>
             <label>问题<input id="pollQuestionInput" maxlength="120" placeholder="输入投票问题" /></label>
             <div class="poll-options-field"><span>选项</span><div id="pollOptionsInput" class="poll-option-list"></div><button id="pollAddOption" class="poll-add-option" type="button">＋ 添加选项</button></div>
-            <div class="poll-editor-actions"><button id="pollSave" type="button">保存预设</button><button id="pollLaunch" class="primary-button" type="button">发起投票</button></div>
+            <div class="poll-editor-actions"><button id="pollCancel" type="button">取消</button><button id="pollSave" type="button">保存</button><button id="pollLaunch" class="primary-button" type="button">发起投票</button></div>
           </div>
           <div id="pollLive" class="poll-live" hidden aria-live="polite"></div>
           <div class="poll-result-actions"><button id="pollEnd" class="danger-button" type="button" hidden>结束投票</button><button id="pollClear" type="button" hidden>关闭结果</button></div>

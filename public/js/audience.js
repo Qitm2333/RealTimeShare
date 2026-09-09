@@ -195,6 +195,10 @@
     interactionPanel.hidden = activeView !== 'interaction';
     readerTab.disabled = !documentInfo.available;
     downloadButton.hidden = !documentInfo.available;
+    const downloadDisabled = documentInfo.audienceMode !== 'reader';
+    downloadButton.classList.toggle('is-disabled', downloadDisabled);
+    downloadButton.setAttribute('aria-disabled', String(downloadDisabled));
+    downloadButton.tabIndex = downloadDisabled ? -1 : 0;
     updateViewState(activeView);
 
     if (!documentInfo.available) {
@@ -237,18 +241,25 @@
 
   function showPoll(poll) {
     activePoll = poll && poll.id ? poll : null;
-    pollDialog.hidden = !activePoll || !identityConfirmed;
-    pollDialog.setAttribute('aria-hidden', String(pollDialog.hidden));
     if (!activePoll) {
+      pollDialog.hidden = true;
+      pollDialog.setAttribute('aria-hidden', 'true');
       pollQuestion.textContent = '';
       pollOptions.textContent = '';
       pollStatus.textContent = '';
       return;
     }
-    pollQuestion.textContent = activePoll.question || '现场投票';
-    pollOptions.textContent = '';
     const savedVotes = loadPollVotes();
     const hasVoted = Boolean(activePoll.hasVoted) || Object.prototype.hasOwnProperty.call(savedVotes, activePoll.id);
+    if (!identityConfirmed || hasVoted || activePoll.ended) {
+      pollDialog.hidden = true;
+      pollDialog.setAttribute('aria-hidden', 'true');
+      return;
+    }
+    pollDialog.hidden = false;
+    pollDialog.setAttribute('aria-hidden', 'false');
+    pollQuestion.textContent = activePoll.question || '现场投票';
+    pollOptions.textContent = '';
     const options = Array.isArray(activePoll.options) ? activePoll.options : [];
     options.forEach((option, index) => {
       const button = document.createElement('button');
@@ -261,6 +272,8 @@
         pollStatus.textContent = '正在提交…';
         button.disabled = true;
         websocket.send(JSON.stringify({ type: 'poll-vote', pollId: activePoll.id, optionIndex: index }));
+        pollDialog.hidden = true;
+        pollDialog.setAttribute('aria-hidden', 'true');
       });
       pollOptions.appendChild(button);
     });
@@ -407,12 +420,12 @@
       }
       if (['poll-start', 'poll-state'].includes(message.type)) showPoll(message.poll);
       if (message.type === 'poll-end') { pendingVoteIndex = null; showPoll(null); }
-      if (message.type === 'poll-voted') { pendingVoteIndex = null; savePollVote(message.pollId, message.optionIndex); if (activePoll) showPoll({ ...activePoll, hasVoted: true, selectedOptionIndex: message.optionIndex }); }
+      if (message.type === 'poll-voted') { pendingVoteIndex = null; savePollVote(message.pollId, message.optionIndex); showPoll(null); }
       if (message.type === 'poll-vote-rejected') {
         pendingVoteIndex = null;
         if (message.reason === 'already-voted' && activePoll) {
           savePollVote(message.pollId, message.optionIndex);
-          showPoll({ ...activePoll, hasVoted: true, selectedOptionIndex: message.optionIndex });
+          showPoll(null);
         } else if (activePoll) {
           showPoll(activePoll);
           pollStatus.textContent = message.reason === 'invalid-vote' ? '投票已失效，请重新选择' : '提交失败，请重试';
@@ -524,4 +537,7 @@
   });
 
   nickname.readOnly = true;
+  downloadButton.addEventListener('click', (event) => {
+    if (documentInfo?.audienceMode !== 'reader') event.preventDefault();
+  });
 })();

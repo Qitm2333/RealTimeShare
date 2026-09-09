@@ -44,10 +44,17 @@
   const pollPanel = document.getElementById('pollPanel');
   const pollClose = document.getElementById('pollClose');
   const pollPresets = document.getElementById('pollPresets');
+  const pollHome = document.getElementById('pollHome');
+  const pollEmpty = document.getElementById('pollEmpty');
+  const pollContentList = document.getElementById('pollContentList');
+  const pollCreate = document.getElementById('pollCreate');
+  const pollEditButton = document.getElementById('pollEditButton');
+  const pollStartSaved = document.getElementById('pollStartSaved');
   const pollQuestionInput = document.getElementById('pollQuestionInput');
   const pollOptionsInput = document.getElementById('pollOptionsInput');
   const pollAddOption = document.getElementById('pollAddOption');
   const pollEditor = document.getElementById('pollEditor');
+  const pollCancel = document.getElementById('pollCancel');
   const pollSave = document.getElementById('pollSave');
   const pollLaunch = document.getElementById('pollLaunch');
   const pollEndButton = document.getElementById('pollEnd');
@@ -77,6 +84,7 @@
   let lotteryResultData = null;
   let toolsPreviousFocus = null;
   let pollLaunchPending = false;
+  let pollEditing = false;
 
   const trackCount = 5;
   const manualAudienceUrlKey = 'live-share-manual-audience-url';
@@ -100,13 +108,16 @@
   function renderPoll(poll) {
     activePoll = poll && poll.id ? poll : null;
     const hasPoll = Boolean(activePoll);
+    if (hasPoll) pollEditing = false;
     pollLive.hidden = !hasPoll;
-    pollEditor.hidden = hasPoll;
-    pollLaunch.hidden = hasPoll;
+    pollHome.hidden = hasPoll || pollEditing;
+    pollEditor.hidden = hasPoll || !pollEditing;
     pollEndButton.hidden = !hasPoll || Boolean(activePoll.ended);
     pollClearButton.hidden = !hasPoll || !activePoll.ended;
     pollLaunch.disabled = false;
+    pollStartSaved.disabled = false;
     pollLaunch.textContent = '发起投票';
+    pollStartSaved.textContent = '发起投票';
     pollLaunchPending = false;
     pollEndButton.disabled = false;
     pollClearButton.disabled = false;
@@ -138,15 +149,14 @@
       row.append(label, value, bar);
       pollLive.appendChild(row);
     });
-    const summary = document.createElement('small');
-    summary.textContent = `已参与 ${total} 人${activePoll.ended ? ' · 投票已结束' : ''}`;
-    pollLive.appendChild(summary);
   }
 
   function handlePollError(message) {
     pollLaunchPending = false;
     pollLaunch.disabled = false;
+    pollStartSaved.disabled = false;
     pollLaunch.textContent = '发起投票';
+    pollStartSaved.textContent = '发起投票';
     pollEndButton.disabled = false;
     pollClearButton.disabled = false;
 
@@ -252,19 +262,74 @@
     });
   }
 
-  function formatActor(message) {
-    const nickname = message?.nickname || message?.user || '匿名';
-    const userId = message?.userId || '';
-    return userId ? `${nickname} · #${String(userId).replace(/^u_/, '').slice(0, 6).toUpperCase()}` : nickname;
+  function renderPresets() {
+    const container = pollContentList || pollPresets;
+    if (!container) return;
+    container.textContent = '';
+    const saved = pollPresetsData.map((preset, index) => ({ preset, index })).filter(({ preset }) => preset?.question && Array.isArray(preset.options) && preset.options.length >= 2);
+    if (saved.length && !saved.some(({ index }) => index === selectedPreset)) selectedPreset = saved[0].index;
+    pollEmpty.hidden = saved.length > 0;
+    pollEditButton.hidden = saved.length === 0;
+    pollStartSaved.hidden = saved.length === 0;
+    pollCreate.textContent = saved.length ? '新建' : '创建投票';
+    saved.forEach(({ preset, index }) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `poll-content-card${index === selectedPreset ? ' is-active' : ''}`;
+      const title = document.createElement('strong');
+      title.textContent = preset.question;
+      const options = document.createElement('span');
+      options.textContent = preset.options.join(' · ');
+      button.append(title, options);
+      button.addEventListener('click', () => {
+        selectedPreset = index;
+        loadSelectedPreset();
+        renderPresets();
+      });
+      container.appendChild(button);
+    });
   }
 
-  function renderPresets() {
-    pollPresets.textContent = '';
-    for (let index = 0; index < 6; index += 1) {
-      const button = document.createElement('button'); button.type = 'button'; button.textContent = String(index + 1); button.className = index === selectedPreset ? 'is-active' : '';
-      button.addEventListener('click', () => { selectedPreset = index; const preset = pollPresetsData[index] || {}; pollQuestionInput.value = preset.question || ''; renderOptionInputs(preset.options || []); renderPresets(); });
-      pollPresets.appendChild(button);
+  function loadSelectedPreset() {
+    const preset = pollPresetsData[selectedPreset] || {};
+    pollQuestionInput.value = preset.question || '';
+    renderOptionInputs(preset.options || []);
+  }
+
+  function setPollEditing(editing) {
+    pollEditing = Boolean(editing) && !activePoll;
+    pollHome.hidden = Boolean(activePoll) || pollEditing;
+    pollEditor.hidden = Boolean(activePoll) || !pollEditing;
+    if (pollEditing) {
+      loadSelectedPreset();
+      window.requestAnimationFrame(() => pollQuestionInput.focus());
+    } else {
+      renderPresets();
     }
+  }
+
+  function getSelectedPoll() {
+    const question = pollQuestionInput.value.replace(/\s+/g, ' ').trim().slice(0, 120);
+    const options = getPollOptions();
+    return { question, options };
+  }
+
+  function launchPoll(question, options) {
+    if (pollLaunchPending) return;
+    if (!question || options.length < 2) {
+      toast.textContent = '请先填写问题和至少两个选项';
+      return;
+    }
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+      toast.textContent = '互动服务未连接';
+      return;
+    }
+    pollLaunchPending = true;
+    pollLaunch.disabled = true;
+    pollStartSaved.disabled = true;
+    pollLaunch.textContent = '发起中…';
+    pollStartSaved.textContent = '发起中…';
+    websocket.send(JSON.stringify({ type: 'poll-start', question, options }));
   }
 
   function getPollOptions() {
@@ -321,10 +386,7 @@
       pollToggle.classList.add('is-open');
       revealFullscreenUi();
       setToolTab(activeTool);
-      if (!pollPresets.children.length && !activePoll) {
-        renderPresets();
-        pollPresets.querySelector('button')?.click();
-      }
+      if (!activePoll) renderPresets();
       window.requestAnimationFrame(() => toolsCard?.focus({ preventScroll: true }));
       return;
     }
@@ -634,7 +696,7 @@
     const top = Math.min(layerHeight - 46, track * trackHeight + 8);
 
     item.className = 'danmu';
-    item.textContent = `${formatActor(message)}: ${message.content}`;
+    item.textContent = message.content;
     item.style.top = `${top}px`;
     item.style.animationDuration = `${8 + Math.random() * 2.5}s`;
 
@@ -646,13 +708,12 @@
     const phrase = quickPhrasesById[message.phraseId];
     if (!phrase) return;
     if (!giftEffectsEnabled) {
-      toast.textContent = `${formatActor(message)}：${phrase.text}`;
+      toast.textContent = phrase.text;
       return;
     }
 
     const item = document.createElement('div');
     const image = document.createElement('img');
-    const actor = document.createElement('span');
     const track = chooseTrack();
 
     item.className = 'quick-danmu';
@@ -660,12 +721,11 @@
     item.style.animationDuration = `${6.2 + Math.random() * 1.4}s`;
     image.src = phrase.image;
     image.alt = phrase.text;
-    actor.textContent = formatActor(message);
-    item.append(image, actor);
+    item.appendChild(image);
     effectLayer.appendChild(item);
     item.addEventListener('animationend', () => item.remove(), { once: true });
     window.setTimeout(() => item.remove(), 8500);
-    toast.textContent = `${formatActor(message)}：${phrase.text}`;
+    toast.textContent = phrase.text;
   }
 
   function addEffect(message) {
@@ -676,7 +736,7 @@
     }
 
     if (!giftEffectsEnabled) {
-      toast.textContent = `${formatActor(message)} ${gift.toast}，本场第 ${message.count || 1} 个`;
+      toast.textContent = `${gift.toast}，本场第 ${message.count || 1} 个`;
       recordEffectBurst(message.effect);
       return;
     }
@@ -719,7 +779,7 @@
       { once: true }
     );
     window.setTimeout(() => item.remove(), Math.ceil(effectConfig.duration * 1000) + 300);
-    toast.textContent = `${formatActor(message)} ${gift.toast}，本场第 ${message.count || 1} 个`;
+    toast.textContent = `${gift.toast}，本场第 ${message.count || 1} 个`;
     recordEffectBurst(message.effect);
   }
 
@@ -1054,7 +1114,9 @@
       setConnectionStatus('重连中');
       pollLaunchPending = false;
       pollLaunch.disabled = false;
+      pollStartSaved.disabled = false;
       pollLaunch.textContent = '发起投票';
+      pollStartSaved.textContent = '发起投票';
       pollEndButton.disabled = false;
       pollClearButton.disabled = false;
       lotteryDraw.disabled = true;
@@ -1066,7 +1128,9 @@
       setConnectionStatus('连接异常');
       pollLaunchPending = false;
       pollLaunch.disabled = false;
+      pollStartSaved.disabled = false;
       pollLaunch.textContent = '发起投票';
+      pollStartSaved.textContent = '发起投票';
       pollEndButton.disabled = false;
       pollClearButton.disabled = false;
       lotteryDraw.disabled = true;
@@ -1122,35 +1186,37 @@
   pollClose.addEventListener('click', () => setToolsOpen(false));
   toolsScrim.addEventListener('click', () => setToolsOpen(false));
   toolTabs.forEach((tab) => tab.addEventListener('click', () => setToolTab(tab.dataset.toolTab)));
+  pollCreate.addEventListener('click', () => {
+    const emptyIndex = pollPresetsData.findIndex((preset) => !preset?.question);
+    if (emptyIndex < 0 && pollPresetsData.length >= 6) {
+      toast.textContent = '最多保留 6 个投票';
+      return;
+    }
+    selectedPreset = emptyIndex >= 0 ? emptyIndex : pollPresetsData.length;
+    setPollEditing(true);
+  });
+  pollEditButton.addEventListener('click', () => setPollEditing(true));
+  pollCancel.addEventListener('click', () => setPollEditing(false));
+  pollStartSaved.addEventListener('click', () => {
+    loadSelectedPreset();
+    const { question, options } = getSelectedPoll();
+    launchPoll(question, options);
+  });
   pollAddOption.addEventListener('click', () => { if (pollOptionsInput.querySelectorAll('input').length < 6) renderOptionInputs([...getPollOptionDrafts(), '']); });
   pollSave.addEventListener('click', () => {
-    const question = pollQuestionInput.value.replace(/\s+/g, ' ').trim().slice(0, 120);
-    const options = getPollOptions();
+    const { question, options } = getSelectedPoll();
     if (!question || options.length < 2) {
       toast.textContent = '请先填写问题和至少两个选项';
       return;
     }
     pollPresetsData[selectedPreset] = { question, options };
     localStorage.setItem('live-share-poll-presets', JSON.stringify(pollPresetsData));
-    renderPresets();
-    toast.textContent = `预设 ${selectedPreset + 1} 已保存`;
+    setPollEditing(false);
+    toast.textContent = '投票已保存';
   });
   pollLaunch.addEventListener('click', () => {
-    if (pollLaunchPending) return;
-    const question = pollQuestionInput.value.replace(/\s+/g, ' ').trim().slice(0, 120);
-    const options = getPollOptions();
-    if (!question || options.length < 2) {
-      toast.textContent = '请先填写问题和至少两个选项';
-      return;
-    }
-    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
-      toast.textContent = '互动服务未连接';
-      return;
-    }
-    pollLaunchPending = true;
-    pollLaunch.disabled = true;
-    pollLaunch.textContent = '发起中…';
-    websocket.send(JSON.stringify({ type: 'poll-start', question, options }));
+    const { question, options } = getSelectedPoll();
+    launchPoll(question, options);
   });
   pollEndButton.addEventListener('click', () => {
     if (!websocket || websocket.readyState !== WebSocket.OPEN) {
