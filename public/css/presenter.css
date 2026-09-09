@@ -303,10 +303,18 @@ body {
 .ranking-user strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
 .ranking-user small { color:#6e6e73; font-size:11px; }
 .ranking-score { color:#0071e3; font-size:13px; font-variant-numeric:tabular-nums; }
-.lottery-controls { display:grid; grid-template-columns:auto 90px minmax(0,1fr); align-items:center; gap:8px; }
-.lottery-controls label { color:#6e6e73; font-size:12px; font-weight:700; }
-.lottery-controls select { min-height:36px; border:1px solid #d2d2d7; border-radius:7px; background:#fff; }
-.lottery-controls .primary-button { min-height:36px; }
+.lottery-controls { display:grid; gap:12px; padding:12px; border:1px solid #e5e5ea; border-radius:10px; background:#fafafa; }
+.lottery-count-field { display:grid; gap:7px; }
+.lottery-count-field > span { color:#6e6e73; font-size:12px; font-weight:800; }
+.lottery-count-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.lottery-count-options button { min-height:38px; border:1px solid #d2d2d7; border-radius:8px; background:#fff; color:#6e6e73; font:inherit; font-size:13px; font-weight:800; cursor:pointer; transition:background 160ms ease,border-color 160ms ease,color 160ms ease,box-shadow 160ms ease; }
+.lottery-count-options button:hover { border-color:#0071e3; color:#0071e3; }
+.lottery-count-options button.is-selected { border-color:#0071e3; background:#eaf3ff; color:#0071e3; box-shadow:inset 0 0 0 1px #0071e3; }
+.lottery-count-options button:disabled { opacity:.45; cursor:not-allowed; }
+.lottery-draw-button { display:flex; width:100%; min-height:44px; align-items:center; justify-content:center; gap:8px; border:1px solid #0071e3; border-radius:8px; background:#0071e3; color:#fff; font:inherit; font-size:14px; font-weight:800; cursor:pointer; transition:background 160ms ease,border-color 160ms ease,transform 160ms ease,box-shadow 160ms ease; }
+.lottery-draw-button:hover:not(:disabled) { border-color:#0064c7; background:#0064c7; box-shadow:0 6px 14px rgba(0,113,227,.2); transform:translateY(-1px); }
+.lottery-draw-button:disabled { border-color:#d2d2d7; background:#e8e8ed; color:#98989d; cursor:not-allowed; box-shadow:none; }
+.lottery-draw-button > span:first-child { font-size:18px; line-height:1; }
 .lottery-result { display:grid; gap:7px; margin-top:14px; padding-top:14px; border-top:1px solid #d2d2d7; }
 .lottery-result > strong { font-size:13px; }
 .lottery-winner { padding:9px 10px; border-radius:8px; background:#f5f5f7; font-size:13px; }
@@ -316,9 +324,7 @@ body {
   .tools-card { padding: 14px; border-radius: 10px; }
   .tools-tabs { margin: 10px 0 12px; }
   .poll-content-list { max-height: 330px; }
-  .lottery-controls { grid-template-columns: 1fr 86px; }
-  .lottery-controls label { grid-column: 1 / -1; }
-  .lottery-controls .primary-button { grid-column: 1 / -1; }
+  .lottery-controls { gap:10px; padding:10px; }
 }
 
 .audience-mode-panel button {

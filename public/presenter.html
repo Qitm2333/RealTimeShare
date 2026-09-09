@@ -135,7 +135,10 @@
         <section id="lotteryToolView" data-tool-view="lottery" aria-labelledby="lotteryTab" hidden>
           <p class="tool-caption">抽奖权重与排行榜一致，仅演讲端可见。</p>
           <div id="lotterySummary" class="lottery-summary">暂无可抽取用户</div>
-          <div class="lottery-controls"><label for="lotteryCount">抽取人数</label><select id="lotteryCount"><option value="1">1 位</option><option value="2">2 位</option><option value="3">3 位</option></select><button id="lotteryDraw" class="primary-button" type="button">开始抽奖</button></div>
+          <div class="lottery-controls">
+            <div class="lottery-count-field"><span>抽取人数</span><div id="lotteryCountOptions" class="lottery-count-options" role="group" aria-label="抽取人数"><button type="button" data-lottery-count="1" class="is-selected" aria-pressed="true">1 位</button><button type="button" data-lottery-count="2" aria-pressed="false">2 位</button><button type="button" data-lottery-count="3" aria-pressed="false">3 位</button></div></div>
+            <button id="lotteryDraw" class="primary-button lottery-draw-button" type="button"><span aria-hidden="true">✦</span><span>开始抽奖</span></button>
+          </div>
           <div id="lotteryResult" class="lottery-result" hidden></div>
         </section>
       </div>
@@ -153,7 +156,7 @@
       </form>
     </div>
 
-    <script src="/js/pdf-reader.js?v=20260909-3"></script>
-    <script src="/js/presenter.js?v=20260909-3"></script>
+    <script src="/js/pdf-reader.js?v=20260909-4"></script>
+    <script src="/js/presenter.js?v=20260909-4"></script>
   </body>
 </html>

@@ -70,7 +70,7 @@
   const rankingSummary = document.getElementById('rankingSummary');
   const rankingList = document.getElementById('rankingList');
   const lotterySummary = document.getElementById('lotterySummary');
-  const lotteryCount = document.getElementById('lotteryCount');
+  const lotteryCountOptions = document.getElementById('lotteryCountOptions');
   const lotteryDraw = document.getElementById('lotteryDraw');
   const lotteryResult = document.getElementById('lotteryResult');
   let activePoll;
@@ -88,6 +88,30 @@
   let toolsPreviousFocus = null;
   let pollLaunchPending = false;
   let pollEditing = false;
+  let lotterySelectedCount = 1;
+
+  function setLotteryDrawLabel(label) {
+    const text = lotteryDraw.querySelector('span:last-child');
+    if (text) text.textContent = label;
+    else lotteryDraw.textContent = label;
+  }
+
+  function setLotteryCount(count) {
+    const value = String(Math.min(3, Math.max(1, Number(count) || 1)));
+    lotterySelectedCount = Number(value);
+    lotteryCountOptions.querySelectorAll('[data-lottery-count]').forEach((button) => {
+      const selected = button.dataset.lotteryCount === value;
+      button.classList.toggle('is-selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+  }
+
+  function setLotteryControlsEnabled(enabled) {
+    lotteryDraw.disabled = !enabled;
+    lotteryCountOptions.querySelectorAll('[data-lottery-count]').forEach((button) => {
+      button.disabled = !enabled;
+    });
+  }
 
   const trackCount = 5;
   const manualAudienceUrlKey = 'live-share-manual-audience-url';
@@ -217,7 +241,7 @@
     const danmuTotal = Math.max(0, Number(totals.danmu || 0));
     rankingSummary.textContent = `礼物 ${giftTotal} · 弹幕 ${danmuTotal} · ${ranking.length} 位参与者`;
     lotterySummary.textContent = ranking.length ? `可抽取用户 ${ranking.length} 位 · 礼物 ${giftTotal} · 弹幕 ${danmuTotal}` : '暂无可抽取用户';
-    lotteryDraw.disabled = !ranking.length || websocket?.readyState !== WebSocket.OPEN;
+    setLotteryControlsEnabled(Boolean(ranking.length) && websocket?.readyState === WebSocket.OPEN);
     rankingList.textContent = '';
     if (!ranking.length) {
       const empty = document.createElement('p');
@@ -252,8 +276,8 @@
     lotteryResultData = result || null;
     lotteryResult.hidden = !lotteryResultData;
     lotteryResult.textContent = '';
-    lotteryDraw.disabled = !latestRankingStats.ranking?.length || websocket?.readyState !== WebSocket.OPEN;
-    lotteryDraw.textContent = '开始抽奖';
+    setLotteryControlsEnabled(Boolean(latestRankingStats.ranking?.length) && websocket?.readyState === WebSocket.OPEN);
+    setLotteryDrawLabel('开始抽奖');
     if (!lotteryResultData) return;
     const title = document.createElement('strong');
     title.textContent = `中奖用户${result.winners?.length ? ` · ${result.winners.length} 位` : ''}`;
@@ -1245,8 +1269,8 @@
 
       if (message.type === 'lottery-error') {
         toast.textContent = message.reason === 'no-participants' ? '暂无可抽取用户' : '抽奖参数无效';
-        lotteryDraw.textContent = '开始抽奖';
-        lotteryDraw.disabled = !latestRankingStats.ranking?.length || websocket?.readyState !== WebSocket.OPEN;
+        setLotteryDrawLabel('开始抽奖');
+        setLotteryControlsEnabled(Boolean(latestRankingStats.ranking?.length) && websocket?.readyState === WebSocket.OPEN);
       }
     });
 
@@ -1259,8 +1283,8 @@
       pollStartSaved.textContent = '发起投票';
       pollEndButton.disabled = false;
       pollClearButton.disabled = false;
-      lotteryDraw.disabled = true;
-      lotteryDraw.textContent = '开始抽奖';
+      setLotteryControlsEnabled(false);
+      setLotteryDrawLabel('开始抽奖');
       setTimeout(connectWebSocket, 1200);
     });
 
@@ -1273,8 +1297,8 @@
       pollStartSaved.textContent = '发起投票';
       pollEndButton.disabled = false;
       pollClearButton.disabled = false;
-      lotteryDraw.disabled = true;
-      lotteryDraw.textContent = '开始抽奖';
+      setLotteryControlsEnabled(false);
+      setLotteryDrawLabel('开始抽奖');
     });
   }
 
@@ -1378,10 +1402,16 @@
   });
   lotteryDraw.addEventListener('click', () => {
     if (!websocket || websocket.readyState !== WebSocket.OPEN) { toast.textContent = '互动服务未连接'; return; }
-    lotteryDraw.disabled = true;
-    lotteryDraw.textContent = '抽奖中…';
-    websocket.send(JSON.stringify({ type: 'lottery-draw', count: Number(lotteryCount.value), excludePrevious: true }));
+    setLotteryControlsEnabled(false);
+    setLotteryDrawLabel('抽奖中…');
+    websocket.send(JSON.stringify({ type: 'lottery-draw', count: lotterySelectedCount, excludePrevious: true }));
   });
+  lotteryCountOptions.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-lottery-count]');
+    if (!button || lotteryDraw.disabled) return;
+    setLotteryCount(button.dataset.lotteryCount);
+  });
+  setLotteryCount(1);
   pdfRemove.addEventListener('click', async () => {
     if (!documentInfo?.available || !window.confirm('确定移除当前 PDF 吗？')) {
       return;
