@@ -543,11 +543,7 @@
   }
 
   function isPresentationFullscreen() {
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    const screenHeight = window.screen?.height || 0;
-    const browserFullscreen = screenHeight > 0 && viewportHeight >= screenHeight - 24;
-
-    return Boolean(document.fullscreenElement) || browserFullscreen;
+    return Boolean(document.fullscreenElement);
   }
 
   function revealFullscreenUi() {
@@ -1304,7 +1300,7 @@
 
   function unlockPresenter() {
     passwordDialog.hidden = true;
-    document.documentElement.requestFullscreen?.().catch(() => {});
+    revealFullscreenUi();
   }
 
   passwordForm.addEventListener('submit', async (event) => {

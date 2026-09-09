@@ -14,6 +14,7 @@
   const pollQuestion = document.getElementById('pollQuestion');
   const pollOptions = document.getElementById('pollOptions');
   const pollStatus = document.getElementById('pollStatus');
+  const pollSubmit = document.getElementById('pollSubmit');
   const identityDialog = document.getElementById('identityDialog');
   const identityForm = document.getElementById('identityForm');
   const identityNickname = document.getElementById('identityNickname');
@@ -25,6 +26,8 @@
   const userIdDisplay = document.getElementById('userIdDisplay');
   let activePoll = null;
   let pendingVoteIndex = null;
+  let selectedVoteIndex = null;
+  let voteSuccessTimer = 0;
   const pdfReader = new window.ContinuousPdfReader({
     container: document.getElementById('readerViewport'),
     emptyState: document.getElementById('readerEmpty')
@@ -245,16 +248,20 @@
   function showPoll(poll) {
     activePoll = poll && poll.id ? poll : null;
     if (!activePoll) {
+      window.clearTimeout(voteSuccessTimer);
+      selectedVoteIndex = null;
       pollDialog.hidden = true;
       pollDialog.setAttribute('aria-hidden', 'true');
       pollQuestion.textContent = '';
       pollOptions.textContent = '';
       pollStatus.textContent = '';
+      pollStatus.classList.remove('is-success');
       return;
     }
     const savedVotes = loadPollVotes();
     const hasVoted = Boolean(activePoll.hasVoted) || Object.prototype.hasOwnProperty.call(savedVotes, activePoll.id);
     if (!identityConfirmed || hasVoted || activePoll.ended) {
+      selectedVoteIndex = null;
       pollDialog.hidden = true;
       pollDialog.setAttribute('aria-hidden', 'true');
       return;
@@ -263,24 +270,55 @@
     pollDialog.setAttribute('aria-hidden', 'false');
     pollQuestion.textContent = activePoll.question || '现场投票';
     pollOptions.textContent = '';
+    pollStatus.classList.remove('is-success');
     const options = Array.isArray(activePoll.options) ? activePoll.options : [];
+    if (selectedVoteIndex === null || selectedVoteIndex >= options.length) {
+      selectedVoteIndex = null;
+    }
     options.forEach((option, index) => {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = option;
       button.disabled = hasVoted || pendingVoteIndex !== null || Boolean(activePoll.ended);
-      button.classList.toggle('is-selected', Number(activePoll.selectedOptionIndex) === index || savedVotes[activePoll.id] === index);
+      button.classList.toggle('is-selected', selectedVoteIndex === index);
       button.addEventListener('click', () => {
         if (!isConnected() || hasVoted || pendingVoteIndex !== null) return;
-        pendingVoteIndex = index;
-        pollStatus.textContent = '正在提交…';
-        button.disabled = true;
-        websocket.send(JSON.stringify({ type: 'poll-vote', pollId: activePoll.id, optionIndex: index }));
-        pollDialog.hidden = true;
-        pollDialog.setAttribute('aria-hidden', 'true');
+        selectedVoteIndex = index;
+        pollOptions.querySelectorAll('button').forEach((optionButton, optionIndex) => {
+          optionButton.classList.toggle('is-selected', optionIndex === selectedVoteIndex);
+        });
+        pollSubmit.disabled = false;
+        pollStatus.textContent = '已选择，请提交';
       });
       pollOptions.appendChild(button);
     });
-    pollStatus.textContent = activePoll.ended ? '投票已结束' : hasVoted ? '已提交' : '';
+    pollSubmit.disabled = hasVoted || pendingVoteIndex !== null || activePoll.ended || selectedVoteIndex === null;
+    pollStatus.textContent = activePoll.ended ? '投票已结束' : hasVoted ? '已提交' : selectedVoteIndex === null ? '' : '已选择，请提交';
+  }
+
+  function submitVote() {
+    if (!activePoll || selectedVoteIndex === null || pendingVoteIndex !== null || !isConnected()) return;
+    pendingVoteIndex = selectedVoteIndex;
+    pollSubmit.disabled = true;
+    pollOptions.querySelectorAll('button').forEach((button) => { button.disabled = true; });
+    pollStatus.textContent = '正在提交…';
+    websocket.send(JSON.stringify({ type: 'poll-vote', pollId: activePoll.id, optionIndex: pendingVoteIndex }));
+  }
+
+  function showVoteSuccess(pollId, optionIndex) {
+    savePollVote(pollId, optionIndex);
+    pendingVoteIndex = null;
+    selectedVoteIndex = optionIndex;
+    pollDialog.hidden = false;
+    pollDialog.setAttribute('aria-hidden', 'false');
+    pollOptions.querySelectorAll('button').forEach((button, index) => {
+      button.disabled = true;
+      button.classList.toggle('is-selected', index === optionIndex);
+    });
+    pollSubmit.disabled = true;
+    pollStatus.textContent = '投票成功';
+    pollStatus.classList.add('is-success');
+    window.clearTimeout(voteSuccessTimer);
+    voteSuccessTimer = window.setTimeout(() => showPoll(null), 1400);
   }
 
   function loadPollVotes() {
@@ -423,9 +461,11 @@
       }
       if (['poll-start', 'poll-state'].includes(message.type)) showPoll(message.poll);
       if (message.type === 'poll-end') { pendingVoteIndex = null; showPoll(null); }
-      if (message.type === 'poll-voted') { pendingVoteIndex = null; savePollVote(message.pollId, message.optionIndex); showPoll(null); }
+      if (message.type === 'poll-voted') { showVoteSuccess(message.pollId, message.optionIndex); }
       if (message.type === 'poll-vote-rejected') {
         pendingVoteIndex = null;
+        selectedVoteIndex = null;
+        pollStatus.classList.remove('is-success');
         if (message.reason === 'already-voted' && activePoll) {
           savePollVote(message.pollId, message.optionIndex);
           showPoll(null);
@@ -492,6 +532,8 @@
     messageInput.value = '';
     messageInput.focus();
   });
+
+  pollSubmit.addEventListener('click', submitVote);
 
   nickname.value = identity.nickname || '';
   updateIdentityDialogState();

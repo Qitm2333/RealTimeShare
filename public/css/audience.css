@@ -92,6 +92,31 @@
   text-align: center;
 }
 
+#pollStatus.is-success {
+  color: #16803c;
+  font-weight: 800;
+}
+
+#pollSubmit {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  margin-top: 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #0071e3;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+#pollSubmit:disabled {
+  background: #e8e8ed;
+  color: #98989d;
+  cursor: not-allowed;
+}
+
 .identity-panel {
   width: min(390px, 100%);
 }
