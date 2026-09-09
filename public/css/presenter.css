@@ -852,10 +852,6 @@ body {
 }
 
 .gift-toggle {
-  position: absolute;
-  top: 144px;
-  right: 24px;
-  z-index: 11;
   min-width: 78px;
   min-height: 34px;
   border: 1px solid #d2d2d7;
@@ -1240,10 +1236,6 @@ body {
   top: 24px;
 }
 
-.stage.is-presentation-fullscreen.is-ui-hidden .gift-toggle {
-  top: 92px;
-}
-
 .stage.is-presentation-fullscreen.is-ui-hidden .combo-badge {
   top: 136px;
 }
@@ -1333,16 +1325,6 @@ body {
     top: 186px;
     right: 12px;
     max-width: calc(100vw - 24px);
-  }
-
-  .gift-toggle {
-    top: 144px;
-    right: 12px;
-    min-height: 32px;
-  }
-
-  .stage.is-presentation-fullscreen.is-ui-hidden .gift-toggle {
-    top: 80px;
   }
 
   .stage.is-presentation-fullscreen.is-ui-hidden .combo-badge {
