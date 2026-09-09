@@ -595,6 +595,30 @@ app.delete('/api/document', requirePresenter, (req, res) => {
   }
 });
 
+app.post('/api/session/reset', requirePresenter, (req, res) => {
+  try {
+    if (fs.existsSync(currentPdfPath)) fs.rmSync(currentPdfPath);
+    documentState = readDocumentState();
+
+    interactionState.totals.gifts = 0;
+    interactionState.totals.giftById = Object.fromEntries(gifts.map((gift) => [gift.id, 0]));
+    Object.values(interactionState.users).forEach((user) => {
+      user.giftCount = 0;
+      user.gifts = {};
+    });
+    persistInteractionState();
+
+    const document = getDocumentPayload();
+    const statsPayload = getPublicStatsPayload();
+    broadcast({ type: 'document', document });
+    broadcastStats();
+    broadcast({ type: 'system', status: 'session-reset' });
+    res.json({ ok: true, document, stats: statsPayload });
+  } catch (error) {
+    res.status(500).json({ error: 'session_reset_failed' });
+  }
+});
+
 app.get('/document/current.pdf', (req, res) => {
   if (!documentState.available) {
     res.status(404).send('PDF is not available');

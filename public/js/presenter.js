@@ -1,6 +1,7 @@
 (function () {
   const pdfInput = document.getElementById('pdfInput');
   const pdfRemove = document.getElementById('pdfRemove');
+  const sessionReset = document.getElementById('sessionReset');
   const pdfStatus = document.getElementById('pdfStatus');
   const pdfReader = new window.LivePdfReader({
     canvas: document.getElementById('pdfCanvas'),
@@ -997,6 +998,13 @@
     }
   }
 
+  function clearSessionEffects() {
+    effectLayer.textContent = '';
+    recentEffects.length = 0;
+    comboBadge.hidden = true;
+    renderLotteryResult(null);
+  }
+
   function setAudienceMode(mode) {
     audienceMode = mode === 'reader' ? 'reader' : 'interaction';
     audienceModeToggle.textContent = audienceMode === 'reader' ? '允许阅读' : '仅互动';
@@ -1024,6 +1032,28 @@
       toast.textContent = nextMode === 'reader' ? '观众可以阅读当前 PDF' : '观众仅可参与互动';
     } catch (error) {
       toast.textContent = '观众模式切换失败';
+    }
+  }
+
+  async function resetSession() {
+    const confirmed = window.confirm('确定重置现场吗？\n\n将移除当前 PDF，并清空所有用户的礼物数量。投票内容和用户数据会保留。');
+    if (!confirmed) return;
+
+    sessionReset.disabled = true;
+    sessionReset.textContent = '重置中…';
+    try {
+      const response = await fetch('/api/session/reset', { method: 'POST' });
+      if (!response.ok) throw new Error('Session reset failed');
+      const result = await response.json();
+      applyDocument(result.document);
+      updateStats(result.stats);
+      clearSessionEffects();
+      toast.textContent = '现场已重置，投票内容和用户数据已保留';
+    } catch (error) {
+      toast.textContent = '重置失败，请重试';
+    } finally {
+      sessionReset.disabled = false;
+      sessionReset.textContent = '重置现场';
     }
   }
 
@@ -1076,6 +1106,10 @@
 
       if (message.type === 'system' && message.status === 'audience-mode') {
         setAudienceMode(message.mode);
+      }
+
+      if (message.type === 'system' && message.status === 'session-reset') {
+        clearSessionEffects();
       }
 
       if (message.type === 'system' && message.status === 'clients') {
@@ -1253,6 +1287,7 @@
       toast.textContent = 'PDF 移除失败';
     }
   });
+  sessionReset.addEventListener('click', resetSession);
   audienceModeToggle.addEventListener('click', toggleAudienceMode);
   qrToggle.addEventListener('click', () => setQrExpanded(qrCard.hidden));
   qrClose.addEventListener('click', () => setQrExpanded(false));
