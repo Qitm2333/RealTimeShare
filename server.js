@@ -10,6 +10,7 @@ const { csvPath, loadGifts } = require('./config/gift-config');
 const PORT = Number(process.env.PORT || 3000);
 const PRESENTER_PASSWORD = process.env.PRESENTER_PASSWORD || '123456';
 const DANMU_COOLDOWN_MS = 1200;
+const QUICK_DANMU_COOLDOWN_MS = 900;
 const EFFECT_COOLDOWN_MS = 120;
 const MAX_CONTENT_LENGTH = 80;
 const MAX_USER_LENGTH = 18;
@@ -25,6 +26,20 @@ const currentPdfPath = path.join(dataDir, 'current.pdf');
 const usersPath = path.join(dataDir, 'users.json');
 const interactionStatePath = path.join(dataDir, 'interaction-state.json');
 const lotteryHistoryPath = path.join(dataDir, 'lottery-history.json');
+
+const quickPhrases = [
+  { id: 'sustain-iteration', text: '持续迭代', image: '/assets/quick-phrases/sustain-iteration.png' },
+  { id: 'think-different', text: '想不一样，做不一样', image: '/assets/quick-phrases/think-different.png' },
+  { id: 'capture-possibility', text: '捕捉更多可能', image: '/assets/quick-phrases/capture-possibility.png' },
+  { id: 'passion-continues', text: '让热爱持续发生', image: '/assets/quick-phrases/passion-continues.png' },
+  { id: 'detail-feeling', text: '对细节有感觉', image: '/assets/quick-phrases/detail-feeling.png' },
+  { id: 'change-continues', text: '让改变持续发生', image: '/assets/quick-phrases/change-continues.png' },
+  { id: 'see-hear-more', text: '看见更多，听见更多', image: '/assets/quick-phrases/see-hear-more.png' },
+  { id: 'redefine', text: '重新定义', image: '/assets/quick-phrases/redefine.png' },
+  { id: 'think-do-more', text: '多想一点，多做一点', image: '/assets/quick-phrases/think-do-more.png' },
+  { id: 'new-angle', text: '换个角度再想想', image: '/assets/quick-phrases/new-angle.png' }
+];
+const quickPhrasesById = new Map(quickPhrases.map((phrase) => [phrase.id, phrase]));
 
 fs.mkdirSync(dataDir, { recursive: true });
 
@@ -174,6 +189,7 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '10kb' }));
 app.use('/css', express.static(path.join(publicDir, 'css')));
 app.use('/js', express.static(path.join(publicDir, 'js')));
+app.use('/assets', express.static(path.join(publicDir, 'assets')));
 app.use('/pdfjs', express.static(pdfjsDir));
 
 function readDocumentState() {
@@ -272,6 +288,17 @@ function normalizeMessage(raw) {
     return {
       type: 'danmu',
       content,
+      user,
+      createdAt: Date.now()
+    };
+  }
+
+  if (message.type === 'quick-danmu' && quickPhrasesById.has(message.phraseId)) {
+    const phrase = quickPhrasesById.get(message.phraseId);
+    return {
+      type: 'quick-danmu',
+      phraseId: phrase.id,
+      content: phrase.text,
       user,
       createdAt: Date.now()
     };
@@ -605,6 +632,10 @@ app.get('/api/gifts', (req, res) => {
   res.json({ gifts });
 });
 
+app.get('/api/quick-phrases', (req, res) => {
+  res.json({ phrases: quickPhrases });
+});
+
 app.get('/api/audience-url', requirePresenter, (req, res) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
   const requestHost = req.headers.host;
@@ -678,7 +709,7 @@ gifts.forEach((gift) => {
 const userCooldowns = new Map();
 
 function getUserCooldown(userId) {
-  if (!userCooldowns.has(userId)) userCooldowns.set(userId, { danmuAt: 0, effectAt: 0 });
+  if (!userCooldowns.has(userId)) userCooldowns.set(userId, { danmuAt: 0, quickDanmuAt: 0, effectAt: 0 });
   return userCooldowns.get(userId);
 }
 
@@ -689,7 +720,7 @@ function recordInteraction(ws, message) {
   const now = Date.now();
   user.lastInteractionAt = now;
 
-  if (message.type === 'danmu') {
+  if (message.type === 'danmu' || message.type === 'quick-danmu') {
     stats.danmu += 1;
     user.danmuCount += 1;
   }
@@ -787,6 +818,7 @@ wss.on('connection', (ws, req) => {
   ws.role = 'unknown';
   ws.presenterAuthorized = isPresenterAuthenticated(req);
   ws.lastDanmuAt = 0;
+  ws.lastQuickDanmuAt = 0;
   ws.lastEffectAt = 0;
   ws.userId = null;
   ws.nickname = '匿名';
@@ -1019,7 +1051,7 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
-    if (rawMessage?.type === 'danmu' || rawMessage?.type === 'effect') {
+    if (rawMessage?.type === 'danmu' || rawMessage?.type === 'quick-danmu' || rawMessage?.type === 'effect') {
       if (ws.role !== 'audience') {
         sendToClient(ws, { type: 'system', status: 'audience-required' });
         return;
@@ -1053,6 +1085,11 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
+    if (message.type === 'quick-danmu' && now - cooldown.quickDanmuAt < QUICK_DANMU_COOLDOWN_MS) {
+      ws.send(JSON.stringify({ type: 'system', status: 'cooldown', scope: 'quick-danmu' }));
+      return;
+    }
+
     if (message.type === 'effect' && now - cooldown.effectAt < EFFECT_COOLDOWN_MS) {
       ws.send(JSON.stringify({ type: 'system', status: 'cooldown', scope: 'effect' }));
       return;
@@ -1060,6 +1097,10 @@ wss.on('connection', (ws, req) => {
 
     if (message.type === 'danmu') {
       cooldown.danmuAt = now;
+    }
+
+    if (message.type === 'quick-danmu') {
+      cooldown.quickDanmuAt = now;
     }
 
     if (message.type === 'effect') {

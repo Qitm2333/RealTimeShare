@@ -85,6 +85,7 @@
   const recentEffects = [];
   let giftList = [];
   let giftsById = {};
+  let quickPhrasesById = {};
   let documentInfo;
   let websocket;
   let giftEffectsEnabled = localStorage.getItem(giftEffectsEnabledKey) !== 'false';
@@ -439,6 +440,18 @@
     }
   }
 
+  async function loadQuickPhrases() {
+    try {
+      const response = await fetch('/api/quick-phrases');
+      if (!response.ok) throw new Error('Quick phrase configuration failed');
+      const data = await response.json();
+      const phrases = Array.isArray(data.phrases) ? data.phrases : [];
+      quickPhrasesById = Object.fromEntries(phrases.map((phrase) => [phrase.id, phrase]));
+    } catch (error) {
+      quickPhrasesById = {};
+    }
+  }
+
   function applyGifts(nextGifts) {
     giftList = Array.isArray(nextGifts) ? nextGifts : [];
     giftsById = Object.fromEntries(giftList.map((gift) => [gift.id, gift]));
@@ -627,6 +640,32 @@
 
     danmuLayer.appendChild(item);
     item.addEventListener('animationend', () => item.remove(), { once: true });
+  }
+
+  function addQuickDanmu(message) {
+    const phrase = quickPhrasesById[message.phraseId];
+    if (!phrase) return;
+    if (!giftEffectsEnabled) {
+      toast.textContent = `${formatActor(message)}：${phrase.text}`;
+      return;
+    }
+
+    const item = document.createElement('div');
+    const image = document.createElement('img');
+    const actor = document.createElement('span');
+    const track = chooseTrack();
+
+    item.className = 'quick-danmu';
+    item.style.top = `${3 + track * 13 + Math.random() * 3}vh`;
+    item.style.animationDuration = `${6.2 + Math.random() * 1.4}s`;
+    image.src = phrase.image;
+    image.alt = phrase.text;
+    actor.textContent = formatActor(message);
+    item.append(image, actor);
+    effectLayer.appendChild(item);
+    item.addEventListener('animationend', () => item.remove(), { once: true });
+    window.setTimeout(() => item.remove(), 8500);
+    toast.textContent = `${formatActor(message)}：${phrase.text}`;
   }
 
   function addEffect(message) {
@@ -951,6 +990,10 @@
         addDanmu(message);
       }
 
+      if (message.type === 'quick-danmu') {
+        addQuickDanmu(message);
+      }
+
       if (message.type === 'effect') {
         addEffect(message);
       }
@@ -1164,7 +1207,7 @@
   setAudienceMode(audienceMode);
   revealFullscreenUi();
 
-  Promise.all([checkSession(), loadGifts()]).then(async ([authenticated]) => {
+  Promise.all([checkSession(), loadGifts(), loadQuickPhrases()]).then(async ([authenticated]) => {
     if (authenticated) {
       passwordDialog.hidden = true;
       await loadDocument();

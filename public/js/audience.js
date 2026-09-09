@@ -3,6 +3,7 @@
   const nickname = document.getElementById('nickname');
   const messageInput = document.getElementById('messageInput');
   const sendButton = document.getElementById('sendButton');
+  const quickPhraseGrid = document.getElementById('quickPhraseGrid');
   const effectGrid = document.getElementById('effectGrid');
   const readerPanel = document.getElementById('readerPanel');
   const downloadButton = document.getElementById('downloadButton');
@@ -31,13 +32,17 @@
   let giftList = [];
   let giftsById = {};
   let effectControls = [];
+  let quickPhraseList = [];
+  let quickPhraseControls = [];
   const controls = [sendButton];
   let documentInfo = { available: false, audienceMode: 'reader' };
 
   const danmuCooldownMs = 1300;
+  const quickPhraseCooldownMs = 950;
   const effectTapGapMs = 150;
   let websocket;
   let danmuCooldownTimer;
+  let quickPhraseCooldownTimer;
   let lastEffectTapAt = 0;
   let activeView = 'interaction';
   const identityStorageKey = 'live-share-identity';
@@ -91,7 +96,6 @@
   function renderGiftButtons() {
     effectGrid.textContent = '';
     effectControls = [];
-    controls.length = 1;
 
     giftList.forEach((gift) => {
       const button = document.createElement('button');
@@ -110,8 +114,52 @@
       button.addEventListener('click', () => sendGift(gift));
       effectGrid.appendChild(button);
       effectControls.push(button);
-      controls.push(button);
     });
+    rebuildControls();
+  }
+
+  function rebuildControls() {
+    controls.length = 1;
+    controls.push(...quickPhraseControls, ...effectControls);
+  }
+
+  function renderQuickPhraseButtons() {
+    quickPhraseGrid.textContent = '';
+    quickPhraseControls = [];
+
+    quickPhraseList.forEach((phrase) => {
+      const button = document.createElement('button');
+      const image = document.createElement('img');
+      button.className = 'quick-phrase-button';
+      button.type = 'button';
+      button.setAttribute('aria-label', phrase.text);
+      button.title = phrase.text;
+      button.disabled = true;
+      image.src = phrase.image;
+      image.alt = '';
+      image.loading = 'lazy';
+      button.appendChild(image);
+      button.addEventListener('click', () => sendQuickPhrase(phrase));
+      quickPhraseGrid.appendChild(button);
+      quickPhraseControls.push(button);
+    });
+    rebuildControls();
+  }
+
+  async function loadQuickPhrases() {
+    try {
+      const response = await fetch('/api/quick-phrases');
+      if (!response.ok) throw new Error('Quick phrase configuration failed');
+      const data = await response.json();
+      quickPhraseList = Array.isArray(data.phrases) ? data.phrases : [];
+      renderQuickPhraseButtons();
+      quickPhraseControls.forEach((control) => {
+        control.disabled = !isConnected() || !identityConfirmed;
+      });
+    } catch (error) {
+      quickPhraseList = [];
+      quickPhraseGrid.textContent = '';
+    }
   }
 
   async function loadGifts() {
@@ -132,6 +180,9 @@
     giftList = Array.isArray(nextGifts) ? nextGifts : [];
     giftsById = Object.fromEntries(giftList.map((gift) => [gift.id, gift]));
     renderGiftButtons();
+    quickPhraseControls.forEach((control) => {
+      control.disabled = !isConnected() || !identityConfirmed;
+    });
     effectControls.forEach((control) => {
       control.disabled = !isConnected() || !identityConfirmed;
     });
@@ -233,6 +284,16 @@
     }, danmuCooldownMs);
   }
 
+  function setQuickPhraseCooldown() {
+    quickPhraseControls.forEach((control) => { control.disabled = true; });
+    clearTimeout(quickPhraseCooldownTimer);
+    quickPhraseCooldownTimer = setTimeout(() => {
+      quickPhraseControls.forEach((control) => {
+        control.disabled = !isConnected() || !identityConfirmed;
+      });
+    }, quickPhraseCooldownMs);
+  }
+
   function send(payload, options = {}) {
     if (!identityConfirmed) {
       showIdentityDialog();
@@ -257,6 +318,13 @@
 
     lastEffectTapAt = Date.now();
     send({ type: 'effect', effect: gift.id });
+  }
+
+  function sendQuickPhrase(phrase) {
+    if (!phrase || Date.now() - lastEffectTapAt < effectTapGapMs) return;
+    lastEffectTapAt = Date.now();
+    send({ type: 'quick-danmu', phraseId: phrase.id });
+    setQuickPhraseCooldown();
   }
 
   function setActiveView(view) {
@@ -293,6 +361,9 @@
       if (identityReady) websocket.send(JSON.stringify({ type: 'identify', userId: identity.userId, nickname: getUser() }));
       setStatus('已连接', 'is-online');
       sendButton.disabled = !identityConfirmed;
+      quickPhraseControls.forEach((control) => {
+        control.disabled = !identityConfirmed;
+      });
       effectControls.forEach((control) => {
         control.disabled = !identityConfirmed;
       });
@@ -309,6 +380,10 @@
 
       if (message.type === 'system' && message.status === 'cooldown' && message.scope === 'danmu') {
         setStatus('稍后再发', '');
+      }
+
+      if (message.type === 'system' && message.status === 'cooldown' && message.scope === 'quick-danmu') {
+        setStatus('快捷用语冷却中', '');
       }
 
       if (message.type === 'identity' && message.user) {
@@ -442,7 +517,7 @@
   interactionTab.addEventListener('click', () => setActiveView('interaction'));
   readerTab.addEventListener('click', () => setActiveView('reader'));
 
-  Promise.all([loadGifts(), loadDocumentState()]).then(() => {
+  Promise.all([loadGifts(), loadQuickPhrases(), loadDocumentState()]).then(() => {
     setActiveView('interaction');
     if (!identityReady) showIdentityDialog();
     connectWebSocket();
