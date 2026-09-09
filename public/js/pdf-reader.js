@@ -227,6 +227,13 @@
     }
 
     async load(url) {
+      if (url === this.pendingLoad) {
+        if (this.pdf) {
+          this.renderVisiblePages();
+        }
+        return;
+      }
+
       const token = ++this.renderToken;
       this.pendingLoad = url;
       this.emptyState.hidden = false;
@@ -277,7 +284,9 @@
           return;
         }
 
+        console.error('Audience PDF load failed:', error);
         this.pdf = null;
+        this.pendingLoad = null;
         this.removeRenderedPages();
         this.pageNodes = [];
         this.emptyState.hidden = false;

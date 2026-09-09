@@ -207,7 +207,9 @@
       return;
     }
 
-    pdfReader.load(`/document/current.pdf?v=${encodeURIComponent(documentInfo.updatedAt || Date.now())}`);
+    if (activeView === 'reader') {
+      pdfReader.load(`/document/current.pdf?v=${encodeURIComponent(documentInfo.updatedAt || Date.now())}`);
+    }
   }
 
   async function loadDocumentState() {
