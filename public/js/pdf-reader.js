@@ -3,8 +3,46 @@
 
   function loadPdfJs() {
     if (!pdfjsPromise) {
-      pdfjsPromise = import('/pdfjs/pdf.mjs').then((pdfjs) => {
-        pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs';
+      // Some embedded mobile browsers used by WeChat do not provide the
+      // promise helpers required by recent PDF.js builds.
+      if (!Promise.withResolvers) {
+        Promise.withResolvers = function withResolvers() {
+          let resolve;
+          let reject;
+          const promise = new Promise((resolvePromise, rejectPromise) => {
+            resolve = resolvePromise;
+            reject = rejectPromise;
+          });
+          return { promise, resolve, reject };
+        };
+      }
+      if (!Promise.try) {
+        Promise.try = function promiseTry(callback, ...args) {
+          return new Promise((resolve, reject) => {
+            try {
+              resolve(callback(...args));
+            } catch (error) {
+              reject(error);
+            }
+          });
+        };
+      }
+      if (!AbortSignal.any) {
+        AbortSignal.any = function abortSignalAny(signals) {
+          const controller = new AbortController();
+          const abort = (event) => controller.abort(event?.target?.reason);
+          signals.forEach((signal) => {
+            if (signal.aborted) {
+              abort({ target: signal });
+            } else {
+              signal.addEventListener('abort', abort, { once: true });
+            }
+          });
+          return controller.signal;
+        };
+      }
+      pdfjsPromise = import('/pdfjs/legacy/pdf.min.mjs').then((pdfjs) => {
+        pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/legacy/pdf.worker.min.mjs';
         return pdfjs;
       });
     }
@@ -69,12 +107,7 @@
 
       try {
         const pdfjs = await loadPdfJs();
-        const loadingTask = pdfjs.getDocument({
-          url,
-          cMapUrl: '/pdfjs/cmaps/',
-          cMapPacked: true
-        });
-        const pdf = await loadingTask.promise;
+        const pdf = await loadPdfDocument(pdfjs, url);
 
         if (token !== this.renderToken) {
           return;
@@ -241,12 +274,7 @@
 
       try {
         const pdfjs = await loadPdfJs();
-        const loadingTask = pdfjs.getDocument({
-          url,
-          cMapUrl: '/pdfjs/cmaps/',
-          cMapPacked: true
-        });
-        const pdf = await loadingTask.promise;
+        const pdf = await loadPdfDocument(pdfjs, url);
 
         if (token !== this.renderToken) {
           return;
@@ -277,8 +305,8 @@
         }
 
         this.emptyState.hidden = true;
+        await this.renderPage(this.pageNodes[0], token);
         this.observePages();
-        await Promise.all(this.pageNodes.slice(0, 2).map((node) => this.renderPage(node, token)));
       } catch (error) {
         if (token !== this.renderToken) {
           return;
@@ -370,7 +398,7 @@
         const availableWidth = Math.max(240, this.container.clientWidth - 24);
         const scale = availableWidth / baseViewport.width;
         const viewport = page.getViewport({ scale });
-        const outputScale = window.devicePixelRatio || 1;
+        const outputScale = Math.min(window.devicePixelRatio || 1, 2);
         const context = node.canvas.getContext('2d', { alpha: false });
 
         node.canvas.width = Math.floor(viewport.width * outputScale);
@@ -403,6 +431,25 @@
           return rect.bottom > -520 && rect.top < window.innerHeight + 520;
         })
         .forEach((node) => this.renderPage(node, this.renderToken));
+    }
+  }
+
+  async function loadPdfDocument(pdfjs, url) {
+    const options = {
+      cMapUrl: '/pdfjs/cmaps/',
+      cMapPacked: true
+    };
+
+    try {
+      return await pdfjs.getDocument({ ...options, url }).promise;
+    } catch (initialError) {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) {
+        throw initialError;
+      }
+
+      const data = new Uint8Array(await response.arrayBuffer());
+      return pdfjs.getDocument({ ...options, data }).promise;
     }
   }
 

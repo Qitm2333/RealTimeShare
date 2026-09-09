@@ -21,6 +21,7 @@ const SESSION_TOKEN = crypto.randomBytes(24).toString('hex');
 const app = express();
 const publicDir = path.join(__dirname, 'public');
 const pdfjsDir = path.join(publicDir, 'pdfjs');
+const pdfjsLegacyBuildDir = path.join(__dirname, 'node_modules', 'pdfjs-dist', 'legacy', 'build');
 const dataDir = path.join(__dirname, 'data');
 const currentPdfPath = path.join(dataDir, 'current.pdf');
 const usersPath = path.join(dataDir, 'users.json');
@@ -191,6 +192,7 @@ app.use(express.json({ limit: '10kb' }));
 app.use('/css', express.static(path.join(publicDir, 'css')));
 app.use('/js', express.static(path.join(publicDir, 'js')));
 app.use('/assets', express.static(path.join(publicDir, 'assets')));
+app.use('/pdfjs/legacy', express.static(pdfjsLegacyBuildDir));
 app.use('/pdfjs', express.static(pdfjsDir));
 
 function readDocumentState() {
