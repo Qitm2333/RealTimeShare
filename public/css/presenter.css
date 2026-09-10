@@ -251,6 +251,7 @@ body {
 .poll-home-actions button:focus-visible,
 .poll-option-row button:focus-visible,
 .poll-add-option:focus-visible,
+.poll-clipboard-actions button:focus-visible,
 .poll-editor-actions button:focus-visible,
 .poll-result-actions button:focus-visible,
 .lottery-controls button:focus-visible,
@@ -280,7 +281,9 @@ body {
 .poll-option-row button { width:34px; border:1px solid #d2d2d7; border-radius:7px; background:#fff; color:#b42318; font-size:18px; cursor:pointer; }
 .poll-option-row button:disabled { opacity:.35; cursor:not-allowed; }
 .poll-add-option { justify-self:start; border:0; background:none; color:#0071e3; font:inherit; font-weight:800; cursor:pointer; }
-.poll-clipboard-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:10px; }
+.poll-clipboard-actions { display:grid; gap:7px; padding-top:10px; border-top:1px solid #e5e5ea; }
+.poll-clipboard-actions > span { color:#6e6e73; font-size:12px; font-weight:700; }
+.poll-clipboard-actions > div { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
 .poll-clipboard-actions button { min-height:34px; border:1px solid #d2d2d7; border-radius:7px; background:#f5f5f7; color:#1d1d1f; font:inherit; font-size:12px; font-weight:800; cursor:pointer; }
 .poll-editor-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
 .poll-editor-actions button { width:100%; min-height:40px; padding:0 10px; border:1px solid #d2d2d7; border-radius:7px; background:#fff; cursor:pointer; }
