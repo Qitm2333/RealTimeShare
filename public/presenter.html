@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>现场互动分享 - 演讲端</title>
-    <link rel="stylesheet" href="/css/presenter.css?v=20260910-2" />
+    <link rel="stylesheet" href="/css/presenter.css?v=20260912-1" />
   </head>
   <body>
     <main class="stage">
@@ -17,6 +17,10 @@
             <button id="sessionReset" class="secondary-button reset-button" type="button" title="移除 PDF 并清空本场数据">重置现场</button>
           </div>
           <div id="pdfStatus" class="pdf-status">未打开</div>
+          <div id="pdfUploadProgress" class="pdf-upload-progress" hidden aria-live="polite">
+            <div class="pdf-upload-progress-head"><span>正在上传</span><strong id="pdfUploadPercent">0%</strong></div>
+            <div id="pdfUploadProgressTrack" class="pdf-upload-progress-track" role="progressbar" aria-label="PDF 上传进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="pdfUploadProgressBar"></span></div>
+          </div>
           <button id="pollToggle" class="secondary-button" type="button" aria-haspopup="dialog" aria-expanded="false">投票</button>
           <button id="giftToggle" class="gift-toggle is-on" type="button" aria-pressed="true">礼物开</button>
           <div class="audience-mode-panel" aria-label="观众内容模式">
@@ -124,6 +128,7 @@
             <div class="poll-clipboard-actions" aria-label="投票配置">
               <span>配置</span>
               <div><button id="pollExport" type="button" title="复制当前投票配置到剪贴板">复制配置</button><button id="pollImport" type="button" title="从剪贴板读取投票配置">导入配置</button></div>
+              <small id="pollClipboardStatus" class="poll-clipboard-status" aria-live="polite"></small>
             </div>
             <div class="poll-editor-actions"><button id="pollCancel" type="button">取消</button><button id="pollSave" type="button">保存</button><button id="pollLaunch" class="primary-button" type="button">发起投票</button></div>
           </div>
@@ -159,7 +164,7 @@
       </form>
     </div>
 
-    <script src="/js/pdf-reader.js?v=20260910-2"></script>
-    <script src="/js/presenter.js?v=20260910-2"></script>
+    <script src="/js/pdf-reader.js?v=20260912-1"></script>
+    <script src="/js/presenter.js?v=20260912-1"></script>
   </body>
 </html>

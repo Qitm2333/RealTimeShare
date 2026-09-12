@@ -3,6 +3,10 @@
   const pdfRemove = document.getElementById('pdfRemove');
   const sessionReset = document.getElementById('sessionReset');
   const pdfStatus = document.getElementById('pdfStatus');
+  const pdfUploadProgress = document.getElementById('pdfUploadProgress');
+  const pdfUploadPercent = document.getElementById('pdfUploadPercent');
+  const pdfUploadProgressTrack = document.getElementById('pdfUploadProgressTrack');
+  const pdfUploadProgressBar = document.getElementById('pdfUploadProgressBar');
   const pdfReader = new window.LivePdfReader({
     canvas: document.getElementById('pdfCanvas'),
     container: document.getElementById('pdfViewport'),
@@ -60,6 +64,7 @@
   const pollLaunch = document.getElementById('pollLaunch');
   const pollExport = document.getElementById('pollExport');
   const pollImport = document.getElementById('pollImport');
+  const pollClipboardStatus = document.getElementById('pollClipboardStatus');
   const pollEndButton = document.getElementById('pollEnd');
   const pollClearButton = document.getElementById('pollClear');
   const pollLive = document.getElementById('pollLive');
@@ -386,14 +391,17 @@
   async function exportPollJson() {
     const data = getPollClipboardData();
     if (!data.question || data.options.length < 2) {
+      if (pollClipboardStatus) pollClipboardStatus.textContent = '请先填写完整投票后再复制';
       toast.textContent = '请先选择或填写一个完整投票';
       return;
     }
 
     try {
       await copyTextToClipboard(`${JSON.stringify(data, null, 2)}\n`);
+      if (pollClipboardStatus) pollClipboardStatus.textContent = `已复制 · ${data.options.length} 个选项`;
       toast.textContent = '投票 JSON 已复制';
     } catch (error) {
+      if (pollClipboardStatus) pollClipboardStatus.textContent = '复制失败，请检查剪贴板权限';
       toast.textContent = '复制失败，请检查剪贴板权限';
     }
   }
@@ -436,8 +444,12 @@
       setPollEditing(true);
       pollQuestionInput.value = question;
       renderOptionInputs(options);
+      if (pollClipboardStatus) pollClipboardStatus.textContent = `已导入 · ${options.length} 个选项，请确认后保存`;
       toast.textContent = '已读取剪贴板，请确认后保存';
     } catch (error) {
+      if (pollClipboardStatus) pollClipboardStatus.textContent = error.message === 'clipboard_cancelled'
+        ? '已取消导入'
+        : '导入失败：JSON 无效';
       toast.textContent = error.message === 'clipboard_cancelled'
         ? '已取消粘贴'
         : 'JSON 无效，请使用包含 question 和 options 的投票配置';
@@ -543,7 +555,12 @@
   }
 
   function isPresentationFullscreen() {
-    return Boolean(document.fullscreenElement);
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const screenHeight = window.screen?.height || 0;
+    const browserFullscreen = screenHeight > 0 && viewportHeight >= screenHeight - 24;
+    const displayModeFullscreen = window.matchMedia?.('(display-mode: fullscreen)').matches;
+
+    return Boolean(document.fullscreenElement) || browserFullscreen || displayModeFullscreen;
   }
 
   function revealFullscreenUi() {
@@ -696,22 +713,10 @@
     pdfInput.disabled = true;
     pdfRemove.disabled = true;
     pdfStatus.textContent = `正在上传 · ${formatBytes(file.size)}`;
+    setPdfUploadProgress(0);
 
     try {
-      const response = await fetch('/api/document', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/pdf',
-          'X-File-Name': encodeURIComponent(file.name)
-        },
-        body: file
-      });
-
-      if (!response.ok) {
-        throw new Error('PDF upload failed');
-      }
-
-      const data = await response.json();
+      const data = await uploadPdfWithProgress(file);
       applyDocument(data.document);
       toast.textContent = 'PDF 已上传';
     } catch (error) {
@@ -719,7 +724,53 @@
       await loadDocument();
     } finally {
       pdfInput.disabled = false;
+      if (pdfUploadProgress) {
+        window.setTimeout(() => setPdfUploadProgress(null), 450);
+      }
     }
+  }
+
+  function setPdfUploadProgress(value) {
+    if (!pdfUploadProgress || !pdfUploadPercent || !pdfUploadProgressTrack || !pdfUploadProgressBar) return;
+    if (value === null || value === undefined) {
+      pdfUploadProgress.hidden = true;
+      return;
+    }
+
+    const percent = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+    pdfUploadProgress.hidden = false;
+    pdfUploadPercent.textContent = `${percent}%`;
+    pdfUploadProgressTrack.setAttribute('aria-valuenow', String(percent));
+    pdfUploadProgressBar.style.width = `${percent}%`;
+  }
+
+  function uploadPdfWithProgress(file) {
+    return new Promise((resolve, reject) => {
+      const request = new XMLHttpRequest();
+      request.open('PUT', '/api/document');
+      request.setRequestHeader('Content-Type', 'application/pdf');
+      request.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
+      request.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          setPdfUploadProgress((event.loaded / event.total) * 100);
+        }
+      });
+      request.addEventListener('load', () => {
+        if (request.status < 200 || request.status >= 300) {
+          reject(new Error('PDF upload failed'));
+          return;
+        }
+        try {
+          setPdfUploadProgress(100);
+          resolve(JSON.parse(request.responseText));
+        } catch (error) {
+          reject(error);
+        }
+      });
+      request.addEventListener('error', () => reject(new Error('PDF upload failed')));
+      request.addEventListener('abort', () => reject(new Error('PDF upload aborted')));
+      request.send(file);
+    });
   }
 
   function normalizeAudienceUrl(value) {
