@@ -415,6 +415,58 @@ function getRanking() {
   return ranking;
 }
 
+// 抽奖候选与互动排行分开：排行只展示有互动的用户，抽奖则覆盖所有已扫码入场的用户。
+// 这样仅阅读或刚入场、尚未发送弹幕/礼物的用户也能公平参与抽奖。
+function getLotteryCandidates() {
+  const candidates = new Map();
+
+  users.forEach((user, userId) => {
+    candidates.set(userId, {
+      userId,
+      nickname: user.nickname,
+      giftCount: 0,
+      danmuCount: 0,
+      gifts: {},
+      lastInteractionAt: 0
+    });
+  });
+
+  Object.values(interactionState.users).forEach((user) => {
+    if (!user?.userId) return;
+    candidates.set(user.userId, {
+      ...candidates.get(user.userId),
+      ...user,
+      userId: user.userId,
+      giftCount: Number(user.giftCount || 0),
+      danmuCount: Number(user.danmuCount || 0),
+      gifts: user.gifts || {}
+    });
+  });
+
+  return Array.from(candidates.values()).map((user) => {
+    const giftCount = Math.max(0, Number(user.giftCount || 0));
+    const danmuCount = Math.max(0, Number(user.danmuCount || 0));
+    const giftShare = interactionState.totals.gifts > 0 ? giftCount / interactionState.totals.gifts : 0;
+    const danmuShare = interactionState.totals.danmu > 0 ? danmuCount / interactionState.totals.danmu : 0;
+    const giftWeight = giftShare * 50;
+    const danmuWeight = danmuShare * 50;
+    return {
+      userId: user.userId,
+      nickname: cleanString(user.nickname, '匿名', MAX_USER_LENGTH),
+      shortId: shortUserId(user.userId),
+      label: userLabel(user.nickname, user.userId),
+      giftCount,
+      danmuCount,
+      giftWeight,
+      danmuWeight,
+      // 没有互动记录时仍保留基础权重，避免抽奖因 0 权重失效。
+      score: giftWeight + danmuWeight,
+      lastInteractionAt: Number(user.lastInteractionAt || 0),
+      rank: null
+    };
+  });
+}
+
 function getPublicStatsPayload() {
   const gifts = { ...interactionState.totals.giftById };
   return {
@@ -428,9 +480,14 @@ function getPublicStatsPayload() {
 }
 
 function getPresenterStatsPayload() {
+  const ranking = getRanking();
   return {
     ...getPublicStatsPayload(),
-    ranking: getRanking()
+    ranking,
+    lottery: {
+      eligibleCount: getLotteryCandidates().length,
+      activeCount: ranking.length
+    }
   };
 }
 
@@ -819,9 +876,9 @@ function drawLottery(count, excludePrevious = true) {
         .flatMap((draw) => (Array.isArray(draw.winners) ? draw.winners.map((winner) => winner.userId) : []))
       : []
   );
-  const ranking = getRanking();
-  let candidates = ranking.filter((user) => !previousWinners.has(user.userId));
-  if (!candidates.length && excludePrevious) candidates = ranking.slice();
+  const lotteryCandidates = getLotteryCandidates();
+  let candidates = lotteryCandidates.filter((user) => !previousWinners.has(user.userId));
+  if (!candidates.length && excludePrevious) candidates = lotteryCandidates.slice();
   if (!candidates.length) return null;
 
   const winners = [];
@@ -849,7 +906,7 @@ function drawLottery(count, excludePrevious = true) {
     sessionId: interactionState.sessionId,
     createdAt: Date.now(),
     requestedCount,
-    eligibleCount: ranking.length,
+    eligibleCount: lotteryCandidates.length,
     drawnCount: winners.length,
     winners: winners.map((winner) => ({
       rank: winner.rank,
@@ -981,6 +1038,8 @@ wss.on('connection', (ws, req) => {
         sendToClient(ws, { type: 'poll-end', pollId: activePoll.id });
       }
       broadcastAudienceCount();
+      // 入场本身就是抽奖资格变化：即使用户还没有发送弹幕或礼物，演讲端也要立即看到可抽取人数。
+      broadcastToPresenters({ type: 'interaction-ranking', stats: getPresenterStatsPayload() });
       return;
     }
 

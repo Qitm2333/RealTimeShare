@@ -98,6 +98,10 @@
   let lotterySelectedCount = 1;
   let lotteryRollTimer = 0;
   let lotteryRollNames = [];
+  let lotteryRollStartedAt = 0;
+  let lotteryRollFinishTimer = 0;
+  let lotteryRollSequence = 0;
+  const lotteryRollMinDuration = 1800;
 
   function setLotteryDrawLabel(label) {
     const text = lotteryDraw.querySelector('span:last-child');
@@ -249,8 +253,9 @@
     const giftTotal = Math.max(0, Number(totals.gifts || 0));
     const danmuTotal = Math.max(0, Number(totals.danmu || 0));
     rankingSummary.textContent = `礼物 ${giftTotal} · 弹幕 ${danmuTotal} · ${ranking.length} 位参与者`;
-    lotterySummary.textContent = ranking.length ? `可抽取用户 ${ranking.length} 位 · 礼物 ${giftTotal} · 弹幕 ${danmuTotal}` : '暂无可抽取用户';
-    setLotteryControlsEnabled(Boolean(ranking.length) && websocket?.readyState === WebSocket.OPEN);
+    const eligibleCount = Math.max(0, Number(latestRankingStats.lottery?.eligibleCount ?? ranking.length));
+    lotterySummary.textContent = eligibleCount ? `可抽取用户 ${eligibleCount} 位 · 礼物 ${giftTotal} · 弹幕 ${danmuTotal}` : '暂无已入场用户';
+    setLotteryControlsEnabled(eligibleCount > 0 && websocket?.readyState === WebSocket.OPEN);
     rankingList.textContent = '';
     if (!ranking.length) {
       const empty = document.createElement('p');
@@ -285,7 +290,8 @@
     lotteryResultData = result || null;
     lotteryResult.hidden = !lotteryResultData;
     lotteryResult.textContent = '';
-    setLotteryControlsEnabled(Boolean(latestRankingStats.ranking?.length) && websocket?.readyState === WebSocket.OPEN);
+    const eligibleCount = Math.max(0, Number(latestRankingStats.lottery?.eligibleCount ?? latestRankingStats.ranking?.length ?? 0));
+    setLotteryControlsEnabled(eligibleCount > 0 && websocket?.readyState === WebSocket.OPEN);
     setLotteryDrawLabel('开始抽奖');
     if (!lotteryResultData) return;
     const title = document.createElement('strong');
@@ -301,7 +307,11 @@
 
   function stopLotteryRoll() {
     window.clearInterval(lotteryRollTimer);
+    window.clearTimeout(lotteryRollFinishTimer);
     lotteryRollTimer = 0;
+    lotteryRollFinishTimer = 0;
+    lotteryRollStartedAt = 0;
+    lotteryRollSequence += 1;
     lotteryRoller.hidden = true;
   }
 
@@ -310,6 +320,8 @@
     lotteryRollNames = ranking.map((user) => formatUserLabel(user)).filter(Boolean);
     if (!lotteryRollNames.length) lotteryRollNames = ['美味的烧鸡', '巧克力味的西瓜', '冰凉的月亮'];
     lotteryRoller.hidden = false;
+    lotteryRollStartedAt = Date.now();
+    lotteryRollSequence += 1;
     let index = Math.floor(Math.random() * lotteryRollNames.length);
     lotteryRollerName.textContent = lotteryRollNames[index];
     window.clearInterval(lotteryRollTimer);
@@ -317,6 +329,15 @@
       index = (index + 1 + Math.floor(Math.random() * Math.max(1, lotteryRollNames.length - 1))) % lotteryRollNames.length;
       lotteryRollerName.textContent = lotteryRollNames[index];
     }, 95);
+  }
+
+  function finishLotteryRoll(callback) {
+    const sequence = lotteryRollSequence;
+    const remaining = Math.max(0, lotteryRollMinDuration - (Date.now() - lotteryRollStartedAt));
+    window.clearTimeout(lotteryRollFinishTimer);
+    lotteryRollFinishTimer = window.setTimeout(() => {
+      if (sequence === lotteryRollSequence) callback();
+    }, remaining);
   }
 
   function renderPresets() {
@@ -1332,18 +1353,23 @@
       }
 
       if (message.type === 'lottery-result') {
-        stopLotteryRoll();
-        renderLotteryResult(message.result);
-        setToolTab('lottery');
-        const winners = Array.isArray(message.result?.winners) ? message.result.winners : [];
-        toast.textContent = winners.length ? winners.map(formatUserLabel).join('、') + ' 中奖' : '抽奖完成';
+        finishLotteryRoll(() => {
+          stopLotteryRoll();
+          renderLotteryResult(message.result);
+          setToolTab('lottery');
+          const winners = Array.isArray(message.result?.winners) ? message.result.winners : [];
+          toast.textContent = winners.length ? winners.map(formatUserLabel).join('、') + ' 中奖' : '抽奖完成';
+        });
       }
 
       if (message.type === 'lottery-error') {
-        stopLotteryRoll();
-        toast.textContent = message.reason === 'no-participants' ? '暂无可抽取用户' : '抽奖参数无效';
-        setLotteryDrawLabel('开始抽奖');
-        setLotteryControlsEnabled(Boolean(latestRankingStats.ranking?.length) && websocket?.readyState === WebSocket.OPEN);
+        finishLotteryRoll(() => {
+          stopLotteryRoll();
+          toast.textContent = message.reason === 'no-participants' ? '暂无已入场用户' : '抽奖参数无效';
+          setLotteryDrawLabel('开始抽奖');
+          const eligibleCount = Math.max(0, Number(latestRankingStats.lottery?.eligibleCount ?? latestRankingStats.ranking?.length ?? 0));
+          setLotteryControlsEnabled(eligibleCount > 0 && websocket?.readyState === WebSocket.OPEN);
+        });
       }
     });
 

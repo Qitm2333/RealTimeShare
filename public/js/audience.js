@@ -26,6 +26,7 @@
   const userIdDisplay = document.getElementById('userIdDisplay');
   const lotteryWinnerDialog = document.getElementById('lotteryWinnerDialog');
   const lotteryWinnerClose = document.getElementById('lotteryWinnerClose');
+  const lotteryWinnerAck = document.getElementById('lotteryWinnerAck');
   const lotteryWinnerName = document.getElementById('lotteryWinnerName');
   let activePoll = null;
   let pendingVoteIndex = null;
@@ -626,6 +627,7 @@
     randomNicknameRequested = false;
   });
   lotteryWinnerClose?.addEventListener('click', hideLotteryWinner);
+  lotteryWinnerAck?.addEventListener('click', hideLotteryWinner);
   lotteryWinnerDialog?.addEventListener('click', (event) => {
     if (event.target === lotteryWinnerDialog) hideLotteryWinner();
   });
