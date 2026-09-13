@@ -298,6 +298,15 @@ function createSensoryNickname(excludedUserId = '') {
   return `打开感官${crypto.randomInt(100, 1000)}`;
 }
 
+function isNicknameTaken(nickname, excludedUserId = '') {
+  const normalized = cleanString(nickname, '', MAX_USER_LENGTH);
+  if (!normalized) return false;
+  for (const user of users.values()) {
+    if (user.userId !== excludedUserId && user.nickname === normalized) return true;
+  }
+  return Object.values(interactionState?.users || {}).some((user) => user.userId !== excludedUserId && user.nickname === normalized);
+}
+
 function normalizeMessage(raw) {
   let message;
 
@@ -1020,10 +1029,11 @@ wss.on('connection', (ws, req) => {
         : null;
       const existing = requestedId ? users.get(requestedId) : null;
       const userId = existing ? requestedId : createUserId();
+      const requestedNickname = cleanString(rawMessage.nickname, '', MAX_USER_LENGTH);
       const nickname = existing
         ? existing.nickname
         : rawMessage.randomNickname === true
-          ? createSensoryNickname()
+          ? requestedNickname && !isNicknameTaken(requestedNickname) ? requestedNickname : createSensoryNickname()
           : cleanString(rawMessage.nickname, '匿名', MAX_USER_LENGTH);
       const now = Date.now();
       const user = { userId, nickname, createdAt: users.get(userId)?.createdAt || now, lastSeenAt: now };
