@@ -3,10 +3,10 @@
 }
 
 :root {
-  --brand: #f29a5b;
-  --brand-strong: #bd5d24;
-  --brand-soft: #fff4ec;
-  --brand-ring: rgba(238, 128, 49, 0.18);
+  --brand: #ffbb3e;
+  --brand-strong: #a86100;
+  --brand-soft: #fff8e8;
+  --brand-ring: rgba(255, 187, 62, 0.24);
   --page: #f7f3ef;
   --surface: #fffdfb;
   --ink: #1d1d1f;
@@ -77,7 +77,7 @@
 
 #pollOptions button.is-selected {
   border-color: var(--brand);
-  background: rgba(238, 128, 49, 0.12);
+  background: rgba(255, 187, 62, 0.14);
   color: var(--brand-strong);
   font-weight: 700;
 }
@@ -292,7 +292,7 @@ a {
   min-height: 100vh;
   min-height: 100dvh;
   padding: 12px 18px calc(96px + env(safe-area-inset-bottom));
-  background: radial-gradient(circle at 100% 0, rgba(238, 128, 49, 0.08), transparent 34%);
+  background: radial-gradient(circle at 100% 0, rgba(255, 187, 62, 0.1), transparent 34%);
 }
 
 .topbar {
@@ -429,7 +429,7 @@ h1 {
 .nav-item.is-active {
   background: var(--brand);
   color: #1d1d1f;
-  box-shadow: 0 4px 12px rgba(238, 128, 49, 0.22);
+  box-shadow: 0 4px 12px rgba(255, 187, 62, 0.24);
 }
 
 .nav-item:focus-visible {
@@ -490,7 +490,7 @@ textarea {
 input:focus,
 textarea:focus {
   border-color: var(--brand);
-  box-shadow: 0 0 0 3px rgba(238, 128, 49, 0.14);
+  box-shadow: 0 0 0 3px rgba(255, 187, 62, 0.18);
 }
 
 .composer {
@@ -551,8 +551,8 @@ textarea:focus {
 }
 
 .effect-button:not(:disabled):hover {
-  border-color: rgba(238, 128, 49, 0.55);
-  box-shadow: 0 5px 14px rgba(238, 128, 49, 0.12);
+  border-color: rgba(255, 187, 62, 0.6);
+  box-shadow: 0 5px 14px rgba(255, 187, 62, 0.16);
   transform: translateY(-1px);
 }
 
@@ -621,8 +621,8 @@ textarea:focus {
 }
 
 .quick-phrase-button:not(:disabled):hover {
-  border-color: rgba(238, 128, 49, 0.55);
-  box-shadow: 0 5px 14px rgba(238, 128, 49, 0.12);
+  border-color: rgba(255, 187, 62, 0.6);
+  box-shadow: 0 5px 14px rgba(255, 187, 62, 0.16);
 }
 
 .quick-phrase-button:focus-visible {
