@@ -25,7 +25,6 @@
   const nicknameDisplay = document.getElementById('nicknameDisplay');
   const userIdDisplay = document.getElementById('userIdDisplay');
   const lotteryWinnerDialog = document.getElementById('lotteryWinnerDialog');
-  const lotteryWinnerClose = document.getElementById('lotteryWinnerClose');
   const lotteryWinnerAck = document.getElementById('lotteryWinnerAck');
   const lotteryWinnerName = document.getElementById('lotteryWinnerName');
   let activePoll = null;
@@ -68,9 +67,10 @@
       if (!saved || typeof saved !== 'object') return { userId: '', nickname: '' };
       const savedNickname = String(saved.nickname || '').replace(/\s+/g, ' ').trim().slice(0, 18);
       const savedUserId = /^u_[a-f0-9]{16}$/.test(String(saved.userId || '')) ? String(saved.userId) : '';
+      const savedSessionId = typeof saved.sessionId === 'string' ? saved.sessionId : '';
       return savedNickname && savedUserId
-        ? { userId: savedUserId, nickname: savedNickname }
-        : { userId: '', nickname: savedNickname };
+        ? { userId: savedUserId, nickname: savedNickname, sessionId: savedSessionId }
+        : { userId: '', nickname: savedNickname, sessionId: savedSessionId };
     } catch (error) {
       return { userId: '', nickname: '' };
     }
@@ -419,7 +419,7 @@
 
     websocket.addEventListener('open', () => {
       websocket.send(JSON.stringify({ type: 'role', role: 'audience' }));
-      if (identityReady) websocket.send(JSON.stringify({ type: 'identify', userId: identity.userId, nickname: getUser() }));
+      if (identityReady) websocket.send(JSON.stringify({ type: 'identify', userId: identity.userId, nickname: getUser(), sessionId: identity.sessionId || '' }));
       setStatus('已连接', 'is-online');
       sendButton.disabled = !identityConfirmed;
       quickPhraseControls.forEach((control) => {
@@ -496,7 +496,7 @@
         controls.forEach((control) => { control.disabled = true; });
         localStorage.removeItem('live-share-identity');
         localStorage.removeItem('live-share-poll-votes');
-        identity = { userId: '', nickname: '' };
+        identity = { userId: '', nickname: '', sessionId: '' };
         identityReady = false;
         identityConfirmed = false;
         identitySubmitting = false;
@@ -578,10 +578,10 @@
     const winners = Array.isArray(result?.winners) ? result.winners : [];
     const winner = winners.find((item) => item?.userId === identity.userId);
     if (!winner || !lotteryWinnerDialog) return;
-    lotteryWinnerName.textContent = winner.nickname || '感官幸运用户';
+    lotteryWinnerName.textContent = `ID ${winner.shortId || String(winner.userId || '').replace(/^u_/, '').slice(0, 6).toUpperCase() || '未知'}`;
     lotteryWinnerDialog.hidden = false;
     lotteryWinnerDialog.setAttribute('aria-hidden', 'false');
-    window.setTimeout(() => lotteryWinnerClose?.focus(), 0);
+    window.setTimeout(() => lotteryWinnerAck?.focus(), 0);
   }
 
   function hideLotteryWinner() {
@@ -617,7 +617,7 @@
     updateIdentityDialogState();
     controls.forEach((control) => { control.disabled = true; });
     if (isConnected()) {
-      websocket.send(JSON.stringify({ type: 'identify', userId: identity.userId || '', nickname: nextNickname, randomNickname: randomNicknameRequested }));
+      websocket.send(JSON.stringify({ type: 'identify', userId: identity.userId || '', nickname: nextNickname, randomNickname: randomNicknameRequested, sessionId: identity.sessionId || '' }));
     } else {
       identityHint.textContent = '等待连接现场…';
     }
@@ -626,7 +626,6 @@
   identityNickname.addEventListener('input', () => {
     randomNicknameRequested = false;
   });
-  lotteryWinnerClose?.addEventListener('click', hideLotteryWinner);
   lotteryWinnerAck?.addEventListener('click', hideLotteryWinner);
   lotteryWinnerDialog?.addEventListener('click', (event) => {
     if (event.target === lotteryWinnerDialog) hideLotteryWinner();

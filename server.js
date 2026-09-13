@@ -1006,13 +1006,16 @@ wss.on('connection', (ws, req) => {
           type: 'identity',
           user: {
             ...current,
+            sessionId: interactionState.sessionId,
             shortId: shortUserId(current.userId),
             label: userLabel(current.nickname, current.userId)
           }
         });
         return;
       }
-      const requestedId = typeof rawMessage.userId === 'string' && /^u_[a-f0-9]{16}$/.test(rawMessage.userId)
+      const requestedId = rawMessage.userId && rawMessage.sessionId !== interactionState.sessionId
+        ? null
+        : typeof rawMessage.userId === 'string' && /^u_[a-f0-9]{16}$/.test(rawMessage.userId)
         ? rawMessage.userId
         : null;
       const existing = requestedId ? users.get(requestedId) : null;
@@ -1031,7 +1034,15 @@ wss.on('connection', (ws, req) => {
       const interactionUser = ensureInteractionUser(userId, nickname);
       if (interactionUser && interactionUser.nickname !== nickname) interactionUser.nickname = nickname;
       persistInteractionState();
-      sendToClient(ws, { type: 'identity', user: { ...user, shortId: shortUserId(userId), label: userLabel(nickname, userId) } });
+      sendToClient(ws, {
+        type: 'identity',
+        user: {
+          ...user,
+          sessionId: interactionState.sessionId,
+          shortId: shortUserId(userId),
+          label: userLabel(nickname, userId)
+        }
+      });
       if (activePoll && !activePoll.ended) {
         sendToClient(ws, { type: 'poll-state', poll: getAudiencePollPayload(activePoll, userId) });
       } else if (activePoll?.ended) {

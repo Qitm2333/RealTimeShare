@@ -80,6 +80,9 @@
   const lotteryResult = document.getElementById('lotteryResult');
   const lotteryRoller = document.getElementById('lotteryRoller');
   const lotteryRollerName = document.getElementById('lotteryRollerName');
+  const presenterLotteryDialog = document.getElementById('presenterLotteryDialog');
+  const presenterLotteryWinners = document.getElementById('presenterLotteryWinners');
+  const presenterLotteryAck = document.getElementById('presenterLotteryAck');
   let activePoll;
   let selectedPreset = 0;
   let pollPresetsData = [];
@@ -303,6 +306,29 @@
       row.textContent = `${formatUserLabel(winner)} · 权重 ${Number(winner.score || 0).toFixed(1)}%`;
       lotteryResult.appendChild(row);
     });
+  }
+
+  function showPresenterLotteryWinner(result) {
+    if (!presenterLotteryDialog || !presenterLotteryWinners) return;
+    presenterLotteryWinners.textContent = '';
+    (Array.isArray(result?.winners) ? result.winners : []).forEach((winner) => {
+      const row = document.createElement('div');
+      row.className = 'presenter-lottery-winner';
+      const name = document.createElement('strong');
+      name.textContent = winner.nickname || '匿名';
+      const id = document.createElement('span');
+      id.textContent = winner.shortId ? `ID ${winner.shortId}` : '';
+      row.append(name, id);
+      presenterLotteryWinners.appendChild(row);
+    });
+    presenterLotteryDialog.hidden = false;
+    presenterLotteryDialog.setAttribute('aria-hidden', 'false');
+  }
+
+  function hidePresenterLotteryWinner() {
+    if (!presenterLotteryDialog) return;
+    presenterLotteryDialog.hidden = true;
+    presenterLotteryDialog.setAttribute('aria-hidden', 'true');
   }
 
   function stopLotteryRoll() {
@@ -1356,6 +1382,7 @@
         finishLotteryRoll(() => {
           stopLotteryRoll();
           renderLotteryResult(message.result);
+          showPresenterLotteryWinner(message.result);
           setToolTab('lottery');
           const winners = Array.isArray(message.result?.winners) ? message.result.winners : [];
           toast.textContent = winners.length ? winners.map(formatUserLabel).join('、') + ' 中奖' : '抽奖完成';
@@ -1512,6 +1539,10 @@
     const button = event.target.closest('[data-lottery-count]');
     if (!button || lotteryDraw.disabled) return;
     setLotteryCount(button.dataset.lotteryCount);
+  });
+  presenterLotteryAck?.addEventListener('click', hidePresenterLotteryWinner);
+  presenterLotteryDialog?.addEventListener('click', (event) => {
+    if (event.target === presenterLotteryDialog) hidePresenterLotteryWinner();
   });
   setLotteryCount(1);
   pdfRemove.addEventListener('click', async () => {
