@@ -731,7 +731,7 @@ app.get('/audience', (req, res) => {
 const server = app.listen(PORT, '0.0.0.0', () => {
   const addresses = getLanAddresses();
 
-  console.log(`Live interaction share is running on port ${PORT}`);
+  console.log(`Torras open mic interaction system is running on port ${PORT}`);
   console.log(`Presenter: http://localhost:${PORT}/`);
   console.log(`Audience:  http://localhost:${PORT}/audience`);
 

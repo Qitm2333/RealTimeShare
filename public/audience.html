@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>现场互动分享 - 观众端</title>
-    <link rel="stylesheet" href="/css/audience.css?v=20260910-2" />
+    <title>Torras 极致开放麦互动系统 - 观众端</title>
+    <link rel="stylesheet" href="/css/audience.css?v=20260913-1" />
   </head>
   <body>
     <main class="audience-app">
       <header class="topbar">
         <div class="brand-block">
-          <h1>现场互动</h1>
+          <h1>Torras 开放麦</h1>
           <div id="identityChip" class="identity-chip" hidden title="当前浏览器身份" aria-label="当前身份">
             <strong id="nicknameDisplay"></strong>
             <span id="userIdDisplay"></span>
@@ -20,9 +20,9 @@
         <a id="downloadButton" class="download-button" href="/document/current.pdf?download=1" download hidden>下载 PDF</a>
       </header>
 
-      <section id="interactionPanel" class="interaction-panel app-view" aria-label="现场互动">
+      <section id="interactionPanel" class="interaction-panel app-view" aria-label="Torras 开放麦互动">
         <div class="interaction-panel-head">
-          <strong>现场互动</strong>
+          <strong>极致开放麦互动</strong>
         </div>
         <input id="nickname" type="hidden" maxlength="18" value="匿名" />
         <div class="composer">
@@ -67,7 +67,7 @@
     </section>
     <section id="identityDialog" class="identity-dialog" role="dialog" aria-modal="true" aria-hidden="true" hidden aria-labelledby="identityTitle" aria-describedby="identityHint">
       <form id="identityForm" class="identity-panel">
-        <h2 id="identityTitle">加入现场互动</h2>
+        <h2 id="identityTitle">加入 Torras 开放麦</h2>
         <p id="identityHint">请输入昵称，之后会自动记住你的身份。</p>
         <label for="identityNickname">昵称</label>
         <input id="identityNickname" maxlength="18" placeholder="例如：小明" autocomplete="nickname" required />
@@ -75,7 +75,7 @@
       </form>
     </section>
 
-    <script src="/js/pdf-reader.js?v=20260910-2"></script>
-    <script src="/js/audience.js?v=20260910-2"></script>
+    <script src="/js/pdf-reader.js?v=20260913-1"></script>
+    <script src="/js/audience.js?v=20260913-1"></script>
   </body>
 </html>
