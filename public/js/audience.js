@@ -27,6 +27,7 @@
   const lotteryWinnerDialog = document.getElementById('lotteryWinnerDialog');
   const lotteryWinnerAck = document.getElementById('lotteryWinnerAck');
   const lotteryWinnerName = document.getElementById('lotteryWinnerName');
+  const lotteryWinnerId = document.getElementById('lotteryWinnerId');
   let activePoll = null;
   let pendingVoteIndex = null;
   let selectedVoteIndex = null;
@@ -578,7 +579,9 @@
     const winners = Array.isArray(result?.winners) ? result.winners : [];
     const winner = winners.find((item) => item?.userId === identity.userId);
     if (!winner || !lotteryWinnerDialog) return;
-    lotteryWinnerName.textContent = `ID ${winner.shortId || String(winner.userId || '').replace(/^u_/, '').slice(0, 6).toUpperCase() || '未知'}`;
+    const shortId = winner.shortId || String(winner.userId || '').replace(/^u_/, '').slice(0, 6).toUpperCase() || '未知';
+    lotteryWinnerName.textContent = winner.nickname || '匿名';
+    if (lotteryWinnerId) lotteryWinnerId.textContent = `ID ${shortId}`;
     lotteryWinnerDialog.hidden = false;
     lotteryWinnerDialog.setAttribute('aria-hidden', 'false');
     window.setTimeout(() => lotteryWinnerAck?.focus(), 0);
