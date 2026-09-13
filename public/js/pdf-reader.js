@@ -70,6 +70,8 @@
       this.scale = 1;
       this.fitMode = 'page';
       this.renderToken = 0;
+      this.renderRequestId = 0;
+      this.renderTask = null;
       this.busy = false;
 
       this.previousButton?.addEventListener('click', () => this.goToPage(this.pageNumber - 1));
@@ -141,6 +143,9 @@
 
     clear(message = '请上传一个 PDF 开始演示') {
       this.renderToken += 1;
+      this.renderRequestId += 1;
+      this.renderTask?.cancel?.();
+      this.renderTask = null;
       this.pdf = null;
       this.canvas.hidden = true;
       this.emptyState.hidden = false;
@@ -158,9 +163,13 @@
       }
 
       const token = this.renderToken;
+      const requestId = ++this.renderRequestId;
+      this.renderTask?.cancel?.();
+      this.renderTask = null;
+      this.setBusy(true);
       const page = await this.pdf.getPage(this.pageNumber);
 
-      if (token !== this.renderToken) {
+      if (token !== this.renderToken || requestId !== this.renderRequestId) {
         return;
       }
 
@@ -190,10 +199,22 @@
       if (this.pageInput) this.pageInput.value = String(this.pageNumber);
       if (this.pageNumberDisplay) this.pageNumberDisplay.textContent = String(this.pageNumber);
       this.updateNavigation();
-      await page.render({ canvasContext: context, viewport }).promise;
-
-      if (this.fitMode === 'custom') {
-        this.scale = scale;
+      const renderTask = page.render({ canvasContext: context, viewport });
+      this.renderTask = renderTask;
+      try {
+        await renderTask.promise;
+        if (token === this.renderToken && requestId === this.renderRequestId && this.fitMode === 'custom') {
+          this.scale = scale;
+        }
+      } catch (error) {
+        const cancelled = error?.name === 'RenderingCancelledException' || requestId !== this.renderRequestId || token !== this.renderToken;
+        if (!cancelled) {
+          this.status.textContent = '渲染失败';
+          console.error('PDF page render failed:', error);
+        }
+      } finally {
+        if (this.renderTask === renderTask) this.renderTask = null;
+        if (requestId === this.renderRequestId) this.setBusy(false);
       }
     }
 
