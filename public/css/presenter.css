@@ -3,11 +3,11 @@
 }
 
 :root {
-  --brand: #ee8031;
-  --brand-strong: #bd5518;
-  --brand-soft: #fff1e8;
-  --brand-ring: rgba(238, 128, 49, 0.24);
-  --brand-shadow: rgba(238, 128, 49, 0.2);
+  --brand: #f29a5b;
+  --brand-strong: #bd5d24;
+  --brand-soft: #fff4ec;
+  --brand-ring: rgba(238, 128, 49, 0.18);
+  --brand-shadow: rgba(238, 128, 49, 0.14);
   --page: #f7f3ef;
   --surface: #fffdfb;
   --ink: #1d1d1f;
@@ -375,7 +375,7 @@ body {
 .lottery-count-options button.is-selected { border-color:var(--brand); background:var(--brand-soft); color:var(--brand-strong); box-shadow:inset 0 0 0 1px var(--brand); }
 .lottery-count-options button:disabled { opacity:.45; cursor:not-allowed; }
 .lottery-draw-button { display:flex; width:100%; min-height:44px; align-items:center; justify-content:center; gap:8px; border:1px solid var(--brand); border-radius:8px; background:var(--brand); color:#1d1d1f; font:inherit; font-size:14px; font-weight:800; cursor:pointer; transition:background 160ms ease,border-color 160ms ease,transform 160ms ease,box-shadow 160ms ease; }
-.lottery-draw-button:hover:not(:disabled) { border-color:var(--brand-strong); background:#f07a24; box-shadow:0 6px 14px var(--brand-shadow); transform:translateY(-1px); }
+.lottery-draw-button:hover:not(:disabled) { border-color:var(--brand-strong); background:#ee8b49; box-shadow:0 6px 14px var(--brand-shadow); transform:translateY(-1px); }
 .lottery-draw-button:disabled { border-color:#d2d2d7; background:#e8e8ed; color:#98989d; cursor:not-allowed; box-shadow:none; }
 .lottery-draw-button > span:first-child { font-size:18px; line-height:1; }
 .lottery-result { display:grid; gap:7px; margin-top:14px; padding-top:14px; border-top:1px solid #d2d2d7; }
