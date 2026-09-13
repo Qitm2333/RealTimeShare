@@ -1,6 +1,6 @@
 (function () {
   const pdfInput = document.getElementById('pdfInput');
-  const pdfRemove = document.getElementById('pdfRemove');
+  const pdfFileButton = document.getElementById('pdfFileButton');
   const sessionReset = document.getElementById('sessionReset');
   const pdfStatus = document.getElementById('pdfStatus');
   const pdfUploadProgress = document.getElementById('pdfUploadProgress');
@@ -11,6 +11,7 @@
     canvas: document.getElementById('pdfCanvas'),
     container: document.getElementById('pdfViewport'),
     pageInput: document.getElementById('pdfPageInput'),
+    pageNumberDisplay: document.getElementById('pdfPageNumber'),
     pageCount: document.getElementById('pdfPageCount'),
     status: pdfStatus,
     previousButton: document.getElementById('pdfPrevious'),
@@ -683,12 +684,12 @@
 
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown' || event.key === 'PageDown' || event.key === ' ') {
       event.preventDefault();
-      pdfReader.goToPage(Number(document.getElementById('pdfPageInput').value) + 1);
+      pdfReader.goToPage(pdfReader.pageNumber + 1);
     }
 
     if (event.key === 'ArrowLeft' || event.key === 'ArrowUp' || event.key === 'PageUp') {
       event.preventDefault();
-      pdfReader.goToPage(Number(document.getElementById('pdfPageInput').value) - 1);
+      pdfReader.goToPage(pdfReader.pageNumber - 1);
     }
   }
 
@@ -746,7 +747,7 @@
 
   function applyDocument(nextDocument) {
     documentInfo = nextDocument || { available: false };
-    pdfRemove.disabled = !documentInfo.available;
+    if (pdfFileButton) pdfFileButton.textContent = documentInfo.available ? '替换 PDF' : '上传 PDF';
     pdfStatus.textContent = documentInfo.available ? '已就绪' : '未打开';
 
     if (!documentInfo.available) {
@@ -782,7 +783,7 @@
     }
 
     pdfInput.disabled = true;
-    pdfRemove.disabled = true;
+    if (pdfFileButton) pdfFileButton.classList.add('is-busy');
     pdfStatus.textContent = `正在上传 · ${formatBytes(file.size)}`;
     setPdfUploadProgress(0);
 
@@ -795,6 +796,7 @@
       await loadDocument();
     } finally {
       pdfInput.disabled = false;
+      if (pdfFileButton) pdfFileButton.classList.remove('is-busy');
       if (pdfUploadProgress) {
         window.setTimeout(() => setPdfUploadProgress(null), 450);
       }
@@ -1255,7 +1257,7 @@
 
   function setAudienceMode(mode) {
     audienceMode = mode === 'reader' ? 'reader' : 'interaction';
-    audienceModeToggle.textContent = audienceMode === 'reader' ? '允许阅读' : '仅互动';
+    audienceModeToggle.textContent = audienceMode === 'reader' ? '可下载' : '仅阅读';
     audienceModeToggle.classList.toggle('is-reader', audienceMode === 'reader');
     audienceModeToggle.setAttribute('aria-pressed', String(audienceMode === 'reader'));
   }
@@ -1545,19 +1547,6 @@
     if (event.target === presenterLotteryDialog) hidePresenterLotteryWinner();
   });
   setLotteryCount(1);
-  pdfRemove.addEventListener('click', async () => {
-    if (!documentInfo?.available || !window.confirm('确定移除当前 PDF 吗？')) {
-      return;
-    }
-
-    const response = await fetch('/api/document', { method: 'DELETE' });
-    if (response.ok) {
-      applyDocument((await response.json()).document);
-      toast.textContent = '当前 PDF 已移除';
-    } else {
-      toast.textContent = 'PDF 移除失败';
-    }
-  });
   sessionReset.addEventListener('click', resetSession);
   audienceModeToggle.addEventListener('click', toggleAudienceMode);
   qrToggle.addEventListener('click', () => setQrExpanded(qrCard.hidden));

@@ -138,12 +138,14 @@ body {
   color: #1d1d1f;
   box-shadow: 0 5px 12px rgba(255, 187, 62, 0.2);
 }
+.file-button.is-busy { pointer-events:none; opacity:.55; }
 
 .secondary-button,
 .pdf-reader-actions button,
 .audience-mode-panel button {
   padding: 0 10px;
 }
+.page-indicator { display:inline-flex; align-items:center; min-height:34px; padding:0 4px; color:#6e6e73; font-size:13px; font-weight:800; white-space:nowrap; }
 
 .secondary-button:disabled,
 .pdf-reader-actions button:disabled {

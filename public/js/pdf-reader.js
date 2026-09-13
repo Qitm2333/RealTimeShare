@@ -55,6 +55,7 @@
       this.canvas = options.canvas;
       this.container = options.container;
       this.pageInput = options.pageInput;
+      this.pageNumberDisplay = options.pageNumberDisplay;
       this.pageCount = options.pageCount;
       this.status = options.status;
       this.previousButton = options.previousButton;
@@ -145,6 +146,7 @@
       this.emptyState.hidden = false;
       this.emptyState.textContent = message;
       this.pageInput.value = '1';
+      if (this.pageNumberDisplay) this.pageNumberDisplay.textContent = '1';
       this.pageCount.textContent = '0';
       this.status.textContent = '等待文件';
       this.setBusy(false);
@@ -185,7 +187,8 @@
       context.fillRect(0, 0, viewport.width, viewport.height);
 
       this.status.textContent = `第 ${this.pageNumber} 页`;
-      this.pageInput.value = String(this.pageNumber);
+      if (this.pageInput) this.pageInput.value = String(this.pageNumber);
+      if (this.pageNumberDisplay) this.pageNumberDisplay.textContent = String(this.pageNumber);
       this.updateNavigation();
       await page.render({ canvasContext: context, viewport }).promise;
 
