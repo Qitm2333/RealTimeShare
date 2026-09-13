@@ -42,6 +42,17 @@ const quickPhrases = [
 ];
 const quickPhrasesById = new Map(quickPhrases.map((phrase) => [phrase.id, phrase]));
 
+const sensoryAdjectives = [
+  '美味的', '香甜的', '酥脆的', '冰凉的', '温热的', '柔软的', '清新的', '辛辣的',
+  '酸爽的', '浓郁的', '丝滑的', '闪亮的', '轻盈的', '热烈的', '安静的', '迷人的',
+  '巧克力味的', '薄荷味的', '奶油香的', '阳光晒过的'
+];
+const sensoryObjects = [
+  '烧鸡', '西瓜', '巧克力', '柠檬', '爆米花', '云朵', '月亮', '蜜桃',
+  '海盐', '可颂', '草莓', '雪糕', '咖啡', '橘子', '薯片', '葡萄',
+  '芒果', '奶酪', '棉花糖', '小夜灯'
+];
+
 fs.mkdirSync(dataDir, { recursive: true });
 
 let gifts = loadGifts();
@@ -265,6 +276,26 @@ function getLanAddresses() {
 function cleanString(value, fallback, maxLength) {
   const text = String(value || '').replace(/\s+/g, ' ').trim();
   return (text || fallback).slice(0, maxLength);
+}
+
+function createSensoryNickname(excludedUserId = '') {
+  const used = new Set(
+    Array.from(users.values())
+      .filter((user) => user.userId !== excludedUserId)
+      .map((user) => user.nickname)
+  );
+  Object.values(interactionState?.users || {}).forEach((user) => {
+    if (user.userId !== excludedUserId) used.add(user.nickname);
+  });
+
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const adjective = sensoryAdjectives[crypto.randomInt(sensoryAdjectives.length)];
+    const object = sensoryObjects[crypto.randomInt(sensoryObjects.length)];
+    const nickname = `${adjective}${object}`;
+    if (!used.has(nickname)) return nickname;
+  }
+
+  return `打开感官${crypto.randomInt(100, 1000)}`;
 }
 
 function normalizeMessage(raw) {
@@ -929,7 +960,11 @@ wss.on('connection', (ws, req) => {
         : null;
       const existing = requestedId ? users.get(requestedId) : null;
       const userId = existing ? requestedId : createUserId();
-      const nickname = existing ? existing.nickname : cleanString(rawMessage.nickname, '匿名', MAX_USER_LENGTH);
+      const nickname = existing
+        ? existing.nickname
+        : rawMessage.randomNickname === true
+          ? createSensoryNickname()
+          : cleanString(rawMessage.nickname, '匿名', MAX_USER_LENGTH);
       const now = Date.now();
       const user = { userId, nickname, createdAt: users.get(userId)?.createdAt || now, lastSeenAt: now };
       users.set(userId, user);
@@ -1083,6 +1118,19 @@ wss.on('connection', (ws, req) => {
         return;
       }
       sendToRole('presenter', { type: 'lottery-result', result });
+      clients.forEach((client) => {
+        if (client.role === 'audience' && client.readyState === WebSocket.OPEN) {
+          const winner = result.winners.find((item) => item.userId === client.userId);
+          client.send(JSON.stringify({
+            type: 'lottery-result',
+            result: {
+              drawId: result.drawId,
+              createdAt: result.createdAt,
+              winners: winner ? [{ userId: winner.userId, nickname: winner.nickname, shortId: winner.shortId }] : []
+            }
+          }));
+        }
+      });
       return;
     }
 

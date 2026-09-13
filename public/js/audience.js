@@ -24,6 +24,9 @@
   const identityChip = document.getElementById('identityChip');
   const nicknameDisplay = document.getElementById('nicknameDisplay');
   const userIdDisplay = document.getElementById('userIdDisplay');
+  const lotteryWinnerDialog = document.getElementById('lotteryWinnerDialog');
+  const lotteryWinnerClose = document.getElementById('lotteryWinnerClose');
+  const lotteryWinnerName = document.getElementById('lotteryWinnerName');
   let activePoll = null;
   let pendingVoteIndex = null;
   let selectedVoteIndex = null;
@@ -54,7 +57,9 @@
   let identityConfirmed = false;
   let identitySubmitting = false;
   let resetRequired = false;
-  const randomNames = ['小星星', '小太阳', '小火花', '小月亮', '小海豚', '小树苗', '小鲸鱼', '小橘子'];
+  let randomNicknameRequested = false;
+  const sensoryAdjectives = ['美味的', '香甜的', '酥脆的', '冰凉的', '温热的', '柔软的', '清新的', '辛辣的', '酸爽的', '浓郁的', '丝滑的', '闪亮的', '轻盈的', '热烈的', '安静的', '迷人的', '巧克力味的', '薄荷味的', '奶油香的', '阳光晒过的'];
+  const sensoryObjects = ['烧鸡', '西瓜', '巧克力', '柠檬', '爆米花', '云朵', '月亮', '蜜桃', '海盐', '可颂', '草莓', '雪糕', '咖啡', '橘子', '薯片', '葡萄', '芒果', '奶酪', '棉花糖', '小夜灯'];
 
   function loadIdentity() {
     try {
@@ -72,6 +77,7 @@
 
   function saveIdentity(nextIdentity) {
     identity = nextIdentity;
+    randomNicknameRequested = false;
     identityReady = Boolean(identity.userId && identity.nickname);
     identityConfirmed = identityReady;
     identitySubmitting = false;
@@ -475,6 +481,7 @@
         }
       }
       if (message.type === 'poll-close') { pendingVoteIndex = null; showPoll(null); }
+      if (message.type === 'lottery-result') showLotteryWinner(message.result);
       if (message.type === 'system' && message.status === 'identity-required') {
         identityConfirmed = false;
         identitySubmitting = false;
@@ -566,8 +573,27 @@
     }
   }
 
+  function showLotteryWinner(result) {
+    const winners = Array.isArray(result?.winners) ? result.winners : [];
+    const winner = winners.find((item) => item?.userId === identity.userId);
+    if (!winner || !lotteryWinnerDialog) return;
+    lotteryWinnerName.textContent = winner.nickname || '感官幸运用户';
+    lotteryWinnerDialog.hidden = false;
+    lotteryWinnerDialog.setAttribute('aria-hidden', 'false');
+    window.setTimeout(() => lotteryWinnerClose?.focus(), 0);
+  }
+
+  function hideLotteryWinner() {
+    if (!lotteryWinnerDialog) return;
+    lotteryWinnerDialog.hidden = true;
+    lotteryWinnerDialog.setAttribute('aria-hidden', 'true');
+  }
+
   function makeRandomNickname() {
-    const name = `${randomNames[Math.floor(Math.random() * randomNames.length)]}${Math.floor(100 + Math.random() * 900)}`;
+    const adjective = sensoryAdjectives[Math.floor(Math.random() * sensoryAdjectives.length)];
+    const object = sensoryObjects[Math.floor(Math.random() * sensoryObjects.length)];
+    const name = `${adjective}${object}`;
+    randomNicknameRequested = true;
     identityNickname.value = name;
   }
 
@@ -590,12 +616,19 @@
     updateIdentityDialogState();
     controls.forEach((control) => { control.disabled = true; });
     if (isConnected()) {
-      websocket.send(JSON.stringify({ type: 'identify', userId: identity.userId || '', nickname: nextNickname }));
+      websocket.send(JSON.stringify({ type: 'identify', userId: identity.userId || '', nickname: nextNickname, randomNickname: randomNicknameRequested }));
     } else {
       identityHint.textContent = '等待连接现场…';
     }
   });
   randomNickname.addEventListener('click', makeRandomNickname);
+  identityNickname.addEventListener('input', () => {
+    randomNicknameRequested = false;
+  });
+  lotteryWinnerClose?.addEventListener('click', hideLotteryWinner);
+  lotteryWinnerDialog?.addEventListener('click', (event) => {
+    if (event.target === lotteryWinnerDialog) hideLotteryWinner();
+  });
 
   messageInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {

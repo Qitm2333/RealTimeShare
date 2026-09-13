@@ -78,6 +78,8 @@
   const lotteryCountOptions = document.getElementById('lotteryCountOptions');
   const lotteryDraw = document.getElementById('lotteryDraw');
   const lotteryResult = document.getElementById('lotteryResult');
+  const lotteryRoller = document.getElementById('lotteryRoller');
+  const lotteryRollerName = document.getElementById('lotteryRollerName');
   let activePoll;
   let selectedPreset = 0;
   let pollPresetsData = [];
@@ -94,6 +96,8 @@
   let pollLaunchPending = false;
   let pollEditing = false;
   let lotterySelectedCount = 1;
+  let lotteryRollTimer = 0;
+  let lotteryRollNames = [];
 
   function setLotteryDrawLabel(label) {
     const text = lotteryDraw.querySelector('span:last-child');
@@ -293,6 +297,26 @@
       row.textContent = `${formatUserLabel(winner)} · 权重 ${Number(winner.score || 0).toFixed(1)}%`;
       lotteryResult.appendChild(row);
     });
+  }
+
+  function stopLotteryRoll() {
+    window.clearInterval(lotteryRollTimer);
+    lotteryRollTimer = 0;
+    lotteryRoller.hidden = true;
+  }
+
+  function startLotteryRoll() {
+    const ranking = Array.isArray(latestRankingStats.ranking) ? latestRankingStats.ranking : [];
+    lotteryRollNames = ranking.map((user) => formatUserLabel(user)).filter(Boolean);
+    if (!lotteryRollNames.length) lotteryRollNames = ['美味的烧鸡', '巧克力味的西瓜', '冰凉的月亮'];
+    lotteryRoller.hidden = false;
+    let index = Math.floor(Math.random() * lotteryRollNames.length);
+    lotteryRollerName.textContent = lotteryRollNames[index];
+    window.clearInterval(lotteryRollTimer);
+    lotteryRollTimer = window.setInterval(() => {
+      index = (index + 1 + Math.floor(Math.random() * Math.max(1, lotteryRollNames.length - 1))) % lotteryRollNames.length;
+      lotteryRollerName.textContent = lotteryRollNames[index];
+    }, 95);
   }
 
   function renderPresets() {
@@ -1308,6 +1332,7 @@
       }
 
       if (message.type === 'lottery-result') {
+        stopLotteryRoll();
         renderLotteryResult(message.result);
         setToolTab('lottery');
         const winners = Array.isArray(message.result?.winners) ? message.result.winners : [];
@@ -1315,6 +1340,7 @@
       }
 
       if (message.type === 'lottery-error') {
+        stopLotteryRoll();
         toast.textContent = message.reason === 'no-participants' ? '暂无可抽取用户' : '抽奖参数无效';
         setLotteryDrawLabel('开始抽奖');
         setLotteryControlsEnabled(Boolean(latestRankingStats.ranking?.length) && websocket?.readyState === WebSocket.OPEN);
@@ -1322,6 +1348,7 @@
     });
 
     websocket.addEventListener('close', () => {
+      stopLotteryRoll();
       setConnectionStatus('重连中');
       pollLaunchPending = false;
       pollLaunch.disabled = false;
@@ -1336,6 +1363,7 @@
     });
 
     websocket.addEventListener('error', () => {
+      stopLotteryRoll();
       setConnectionStatus('连接异常');
       pollLaunchPending = false;
       pollLaunch.disabled = false;
@@ -1451,6 +1479,7 @@
     if (!websocket || websocket.readyState !== WebSocket.OPEN) { toast.textContent = '互动服务未连接'; return; }
     setLotteryControlsEnabled(false);
     setLotteryDrawLabel('抽奖中…');
+    startLotteryRoll();
     websocket.send(JSON.stringify({ type: 'lottery-draw', count: lotterySelectedCount, excludePrevious: true }));
   });
   lotteryCountOptions.addEventListener('click', (event) => {

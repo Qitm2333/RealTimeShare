@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Torras 极致开放麦互动系统 - 演讲端</title>
-    <link rel="stylesheet" href="/css/presenter.css?v=20260913-3" />
+    <link rel="stylesheet" href="/css/presenter.css?v=20260913-4" />
   </head>
   <body>
     <main class="stage">
@@ -143,6 +143,11 @@
         <section id="lotteryToolView" data-tool-view="lottery" aria-labelledby="lotteryTab" hidden>
           <p class="tool-caption">抽奖权重与排行榜一致，仅演讲端可见。</p>
           <div id="lotterySummary" class="lottery-summary">暂无可抽取用户</div>
+          <div id="lotteryRoller" class="lottery-roller" hidden aria-live="polite">
+            <span class="lottery-roller-kicker">正在匹配感官信号</span>
+            <strong id="lotteryRollerName">准备中…</strong>
+            <span class="lottery-roller-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          </div>
           <div class="lottery-controls">
             <div class="lottery-count-field"><span>抽取人数</span><div id="lotteryCountOptions" class="lottery-count-options" role="group" aria-label="抽取人数"><button type="button" data-lottery-count="1" class="is-selected" aria-pressed="true">1 位</button><button type="button" data-lottery-count="2" aria-pressed="false">2 位</button><button type="button" data-lottery-count="3" aria-pressed="false">3 位</button></div></div>
             <button id="lotteryDraw" class="primary-button lottery-draw-button" type="button"><span aria-hidden="true">✦</span><span>开始抽奖</span></button>
@@ -164,7 +169,7 @@
       </form>
     </div>
 
-    <script src="/js/pdf-reader.js?v=20260913-3"></script>
-    <script src="/js/presenter.js?v=20260913-3"></script>
+    <script src="/js/pdf-reader.js?v=20260913-4"></script>
+    <script src="/js/presenter.js?v=20260913-4"></script>
   </body>
 </html>

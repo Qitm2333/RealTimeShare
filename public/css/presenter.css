@@ -367,6 +367,15 @@ body {
 .ranking-user small { color:#6e6e73; font-size:11px; }
 .ranking-score { color:var(--brand-strong); font-size:13px; font-variant-numeric:tabular-nums; }
 .lottery-controls { display:grid; gap:12px; padding:12px; border:1px solid #e5e5ea; border-radius:10px; background:#fafafa; }
+.lottery-roller { display:grid; justify-items:center; gap:6px; margin:12px 0; padding:18px 14px; border:1px solid rgba(255,187,62,.45); border-radius:12px; background:linear-gradient(135deg,#fff8e8,#fffdfb 55%,#fff1d2); text-align:center; box-shadow:0 8px 22px rgba(255,187,62,.12); }
+.lottery-roller[hidden] { display:none; }
+.lottery-roller-kicker { color:#a86100; font-size:11px; font-weight:800; letter-spacing:.08em; }
+.lottery-roller strong { min-height:32px; color:#1d1d1f; font-size:22px; line-height:1.4; }
+.lottery-roller-dots { display:flex; gap:5px; }
+.lottery-roller-dots i { display:block; width:6px; height:6px; border-radius:50%; background:#ffbb3e; animation: lottery-dot 700ms ease-in-out infinite; }
+.lottery-roller-dots i:nth-child(2) { animation-delay:120ms; }
+.lottery-roller-dots i:nth-child(3) { animation-delay:240ms; }
+@keyframes lottery-dot { 0%,100% { opacity:.35; transform:translateY(0); } 50% { opacity:1; transform:translateY(-4px); } }
 .lottery-count-field { display:grid; gap:7px; }
 .lottery-count-field > span { color:#6e6e73; font-size:12px; font-weight:800; }
 .lottery-count-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }

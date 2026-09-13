@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Torras 极致开放麦互动系统 - 观众端</title>
-    <link rel="stylesheet" href="/css/audience.css?v=20260913-3" />
+    <link rel="stylesheet" href="/css/audience.css?v=20260913-4" />
   </head>
   <body>
     <main class="audience-app">
@@ -74,8 +74,18 @@
         <div class="identity-actions"><button id="randomNickname" class="secondary-button" type="button">随机昵称</button><button id="identitySubmit" class="primary-button" type="submit">进入互动</button></div>
       </form>
     </section>
+    <section id="lotteryWinnerDialog" class="lottery-winner-dialog" role="dialog" aria-modal="true" aria-hidden="true" hidden aria-labelledby="lotteryWinnerTitle">
+      <div class="lottery-winner-card">
+        <button id="lotteryWinnerClose" class="lottery-winner-close" type="button" aria-label="关闭中奖提示">×</button>
+        <span class="lottery-winner-spark" aria-hidden="true">✦</span>
+        <p>感官惊喜已抵达</p>
+        <h2 id="lotteryWinnerTitle">恭喜你中奖了</h2>
+        <strong id="lotteryWinnerName"></strong>
+        <span>请留意现场主持人的领取提示</span>
+      </div>
+    </section>
 
-    <script src="/js/pdf-reader.js?v=20260913-3"></script>
-    <script src="/js/audience.js?v=20260913-3"></script>
+    <script src="/js/pdf-reader.js?v=20260913-4"></script>
+    <script src="/js/audience.js?v=20260913-4"></script>
   </body>
 </html>
