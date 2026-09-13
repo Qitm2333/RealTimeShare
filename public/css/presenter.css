@@ -398,6 +398,9 @@ body {
 .presenter-lottery-winner { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border-radius:8px; background:#f6f4f0; text-align:left; }
 .presenter-lottery-winner strong { color:#242321; font-size:15px; }
 .presenter-lottery-winner span { color:#77736b; font-size:12px; }
+.presenter-lottery-card .primary-button { min-width:132px; min-height:40px; padding:0 20px; border:0; border-radius:999px; background:#242321; color:#fffefa; font-size:14px; font-weight:700; letter-spacing:.01em; box-shadow:none; transition:background 160ms ease,transform 160ms ease; }
+.presenter-lottery-card .primary-button:hover { background:#3a3834; transform:translateY(-1px); }
+.presenter-lottery-card .primary-button:active { transform:scale(.98); }
 @keyframes winner-card-in { from { opacity:0; transform:translateY(12px) scale(.96); } to { opacity:1; transform:translateY(0) scale(1); } }
 #pollToggle.is-open { border-color:var(--brand); background:var(--brand); color:#1d1d1f; }
 
