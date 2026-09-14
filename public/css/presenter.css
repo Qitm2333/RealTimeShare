@@ -334,7 +334,8 @@ body {
 .poll-home-actions .primary-button { border-color:var(--brand); background:var(--brand); color:#1d1d1f; }
 .poll-editor { display:grid; gap:10px; }
 .poll-editor label { display:grid; gap:5px; color:#6e6e73; font-size:12px; font-weight:700; }
-.poll-editor input { width:100%; min-height:38px; padding:8px; border:1px solid #d2d2d7; border-radius:7px; font:inherit; }
+.poll-editor input,.poll-editor select { width:100%; min-height:38px; padding:8px; border:1px solid #d2d2d7; border-radius:7px; background:#fff; color:#1d1d1f; font:inherit; }
+.poll-selection-field select { cursor:pointer; }
 .poll-options-field { display:grid; gap:6px; color:#6e6e73; font-size:12px; font-weight:700; }
 .poll-option-list { display:grid; gap:8px; }
 .poll-option-row { display:flex; gap:8px; }

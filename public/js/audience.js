@@ -29,8 +29,8 @@
   const lotteryWinnerName = document.getElementById('lotteryWinnerName');
   const lotteryWinnerId = document.getElementById('lotteryWinnerId');
   let activePoll = null;
-  let pendingVoteIndex = null;
-  let selectedVoteIndex = null;
+  let pendingVoteIndices = null;
+  let selectedVoteIndices = [];
   let voteSuccessTimer = 0;
   const pdfReader = new window.ContinuousPdfReader({
     container: document.getElementById('readerViewport'),
@@ -254,10 +254,15 @@
   }
 
   function showPoll(poll) {
+    const previousPollId = activePoll?.id || null;
     activePoll = poll && poll.id ? poll : null;
+    if (activePoll?.id !== previousPollId) {
+      selectedVoteIndices = [];
+      pendingVoteIndices = null;
+    }
     if (!activePoll) {
       window.clearTimeout(voteSuccessTimer);
-      selectedVoteIndex = null;
+      selectedVoteIndices = [];
       pollDialog.hidden = true;
       pollDialog.setAttribute('aria-hidden', 'true');
       pollQuestion.textContent = '';
@@ -269,7 +274,7 @@
     const savedVotes = loadPollVotes();
     const hasVoted = Boolean(activePoll.hasVoted) || Object.prototype.hasOwnProperty.call(savedVotes, activePoll.id);
     if (!identityConfirmed || hasVoted || activePoll.ended) {
-      selectedVoteIndex = null;
+      selectedVoteIndices = [];
       pollDialog.hidden = true;
       pollDialog.setAttribute('aria-hidden', 'true');
       return;
@@ -280,47 +285,62 @@
     pollOptions.textContent = '';
     pollStatus.classList.remove('is-success');
     const options = Array.isArray(activePoll.options) ? activePoll.options : [];
-    if (selectedVoteIndex === null || selectedVoteIndex >= options.length) {
-      selectedVoteIndex = null;
-    }
+    const maxSelections = Math.min(Math.max(1, Number(activePoll.maxSelections) || 1), Math.max(1, options.length));
+    selectedVoteIndices = selectedVoteIndices.filter((index) => Number.isInteger(index) && index >= 0 && index < options.length).slice(0, maxSelections);
+    const updateSelectionState = () => {
+      pollOptions.querySelectorAll('button').forEach((optionButton, optionIndex) => {
+        optionButton.classList.toggle('is-selected', selectedVoteIndices.includes(optionIndex));
+        optionButton.setAttribute('aria-pressed', String(selectedVoteIndices.includes(optionIndex)));
+      });
+      const complete = selectedVoteIndices.length === maxSelections;
+      pollSubmit.disabled = !complete;
+      pollStatus.textContent = maxSelections === 1
+        ? selectedVoteIndices.length ? '已选择，请提交' : ''
+        : complete
+          ? `已选 ${maxSelections} 项，请提交`
+          : `请选择 ${maxSelections} 项（已选 ${selectedVoteIndices.length} 项）`;
+    };
     options.forEach((option, index) => {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = option;
-      button.disabled = hasVoted || pendingVoteIndex !== null || Boolean(activePoll.ended);
-      button.classList.toggle('is-selected', selectedVoteIndex === index);
+      button.disabled = hasVoted || pendingVoteIndices !== null || Boolean(activePoll.ended);
+      button.setAttribute('aria-pressed', 'false');
       button.addEventListener('click', () => {
-        if (!isConnected() || hasVoted || pendingVoteIndex !== null) return;
-        selectedVoteIndex = index;
-        pollOptions.querySelectorAll('button').forEach((optionButton, optionIndex) => {
-          optionButton.classList.toggle('is-selected', optionIndex === selectedVoteIndex);
-        });
-        pollSubmit.disabled = false;
-        pollStatus.textContent = '已选择，请提交';
+        if (!isConnected() || hasVoted || pendingVoteIndices !== null) return;
+        if (selectedVoteIndices.includes(index)) {
+          selectedVoteIndices = selectedVoteIndices.filter((selectedIndex) => selectedIndex !== index);
+        } else if (maxSelections === 1) {
+          selectedVoteIndices = [index];
+        } else if (selectedVoteIndices.length < maxSelections) {
+          selectedVoteIndices = [...selectedVoteIndices, index];
+        }
+        updateSelectionState();
       });
       pollOptions.appendChild(button);
     });
-    pollSubmit.disabled = hasVoted || pendingVoteIndex !== null || activePoll.ended || selectedVoteIndex === null;
-    pollStatus.textContent = activePoll.ended ? '投票已结束' : hasVoted ? '已提交' : selectedVoteIndex === null ? '' : '已选择，请提交';
+    updateSelectionState();
   }
 
   function submitVote() {
-    if (!activePoll || selectedVoteIndex === null || pendingVoteIndex !== null || !isConnected()) return;
-    pendingVoteIndex = selectedVoteIndex;
+    const required = Math.min(Math.max(1, Number(activePoll?.maxSelections) || 1), Math.max(1, activePoll?.options?.length || 1));
+    if (!activePoll || selectedVoteIndices.length !== required || pendingVoteIndices !== null || !isConnected()) return;
+    pendingVoteIndices = selectedVoteIndices.slice();
     pollSubmit.disabled = true;
     pollOptions.querySelectorAll('button').forEach((button) => { button.disabled = true; });
     pollStatus.textContent = '正在提交…';
-    websocket.send(JSON.stringify({ type: 'poll-vote', pollId: activePoll.id, optionIndex: pendingVoteIndex }));
+    websocket.send(JSON.stringify({ type: 'poll-vote', pollId: activePoll.id, optionIndices: pendingVoteIndices }));
   }
 
-  function showVoteSuccess(pollId, optionIndex) {
-    savePollVote(pollId, optionIndex);
-    pendingVoteIndex = null;
-    selectedVoteIndex = optionIndex;
+  function showVoteSuccess(pollId, optionIndices) {
+    const selections = Array.isArray(optionIndices) ? optionIndices : [optionIndices].filter(Number.isInteger);
+    savePollVote(pollId, selections);
+    pendingVoteIndices = null;
+    selectedVoteIndices = selections;
     pollDialog.hidden = false;
     pollDialog.setAttribute('aria-hidden', 'false');
     pollOptions.querySelectorAll('button').forEach((button, index) => {
       button.disabled = true;
-      button.classList.toggle('is-selected', index === optionIndex);
+      button.classList.toggle('is-selected', selectedVoteIndices.includes(index));
     });
     pollSubmit.disabled = true;
     pollStatus.textContent = '投票成功';
@@ -333,8 +353,8 @@
     try { return JSON.parse(localStorage.getItem('live-share-poll-votes') || '{}'); } catch (error) { return {}; }
   }
 
-  function savePollVote(pollId, optionIndex) {
-    const votes = loadPollVotes(); votes[pollId] = optionIndex; localStorage.setItem('live-share-poll-votes', JSON.stringify(votes));
+  function savePollVote(pollId, optionIndices) {
+    const votes = loadPollVotes(); votes[pollId] = optionIndices; localStorage.setItem('live-share-poll-votes', JSON.stringify(votes));
   }
 
   function setDanmuCooldown() {
@@ -468,21 +488,21 @@
         applyDocumentState({ ...documentInfo, audienceMode: message.mode });
       }
       if (['poll-start', 'poll-state'].includes(message.type)) showPoll(message.poll);
-      if (message.type === 'poll-end') { pendingVoteIndex = null; showPoll(null); }
-      if (message.type === 'poll-voted') { showVoteSuccess(message.pollId, message.optionIndex); }
+      if (message.type === 'poll-end') { pendingVoteIndices = null; showPoll(null); }
+      if (message.type === 'poll-voted') { showVoteSuccess(message.pollId, message.optionIndices); }
       if (message.type === 'poll-vote-rejected') {
-        pendingVoteIndex = null;
-        selectedVoteIndex = null;
+        pendingVoteIndices = null;
+        selectedVoteIndices = [];
         pollStatus.classList.remove('is-success');
         if (message.reason === 'already-voted' && activePoll) {
-          savePollVote(message.pollId, message.optionIndex);
+          savePollVote(message.pollId, message.optionIndices || []);
           showPoll(null);
         } else if (activePoll) {
           showPoll(activePoll);
           pollStatus.textContent = message.reason === 'invalid-vote' ? '投票已失效，请重新选择' : '提交失败，请重试';
         }
       }
-      if (message.type === 'poll-close') { pendingVoteIndex = null; showPoll(null); }
+      if (message.type === 'poll-close') { pendingVoteIndices = null; showPoll(null); }
       if (message.type === 'lottery-result') showLotteryWinner(message.result);
       if (message.type === 'system' && message.status === 'identity-required') {
         identityConfirmed = false;
@@ -492,7 +512,7 @@
       }
       if (message.type === 'system' && message.status === 'session-reset') {
         resetRequired = true;
-        pendingVoteIndex = null;
+        pendingVoteIndices = null;
         showPoll(null);
         controls.forEach((control) => { control.disabled = true; });
         localStorage.removeItem('live-share-identity');
@@ -511,6 +531,7 @@
 
     websocket.addEventListener('close', () => {
       if (resetRequired) return;
+      pendingVoteIndices = null;
       setStatus('重连中', 'is-offline');
       controls.forEach((control) => {
         control.disabled = true;

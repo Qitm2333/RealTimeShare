@@ -57,6 +57,7 @@
   const pollEditButton = document.getElementById('pollEditButton');
   const pollStartSaved = document.getElementById('pollStartSaved');
   const pollQuestionInput = document.getElementById('pollQuestionInput');
+  const pollMaxSelections = document.getElementById('pollMaxSelections');
   const pollOptionsInput = document.getElementById('pollOptionsInput');
   const pollAddOption = document.getElementById('pollAddOption');
   const pollEditor = document.getElementById('pollEditor');
@@ -367,6 +368,11 @@
     }, remaining);
   }
 
+  function normalizeSelectionCount(value, optionCount) {
+    const count = Number(value);
+    return Number.isInteger(count) ? Math.min(Math.max(1, count), Math.max(1, optionCount)) : 1;
+  }
+
   function renderPresets() {
     const container = pollContentList || pollPresets;
     if (!container) return;
@@ -384,7 +390,8 @@
       const title = document.createElement('strong');
       title.textContent = preset.question;
       const options = document.createElement('span');
-      options.textContent = preset.options.join(' · ');
+      const maxSelections = normalizeSelectionCount(preset.maxSelections, preset.options.length);
+      options.textContent = `${maxSelections === 1 ? '单选' : `选 ${maxSelections} 项`} · ${preset.options.join(' · ')}`;
       button.append(title, options);
       button.addEventListener('click', () => {
         selectedPreset = index;
@@ -398,7 +405,7 @@
   function loadSelectedPreset() {
     const preset = pollPresetsData[selectedPreset] || {};
     pollQuestionInput.value = preset.question || '';
-    renderOptionInputs(preset.options || []);
+    renderOptionInputs(preset.options || [], preset.maxSelections || 1);
   }
 
   function setPollEditing(editing) {
@@ -416,14 +423,16 @@
   function getSelectedPoll() {
     const question = pollQuestionInput.value.replace(/\s+/g, ' ').trim().slice(0, 120);
     const options = getPollOptions();
-    return { question, options };
+    const maxSelections = normalizeSelectionCount(pollMaxSelections.value, options.length);
+    return { question, options, maxSelections };
   }
 
   function getPollClipboardData() {
     if (activePoll) {
       return {
         question: String(activePoll.question || '').trim(),
-        options: Array.isArray(activePoll.options) ? activePoll.options.map((option) => String(option || '').trim()).filter(Boolean).slice(0, 6) : []
+        options: Array.isArray(activePoll.options) ? activePoll.options.map((option) => String(option || '').trim()).filter(Boolean).slice(0, 6) : [],
+        maxSelections: normalizeSelectionCount(activePoll.maxSelections, activePoll.options?.length || 1)
       };
     }
 
@@ -434,7 +443,8 @@
     const preset = pollPresetsData[selectedPreset] || {};
     return {
       question: String(preset.question || '').trim(),
-      options: Array.isArray(preset.options) ? preset.options.map((option) => String(option || '').trim()).filter(Boolean).slice(0, 6) : []
+      options: Array.isArray(preset.options) ? preset.options.map((option) => String(option || '').trim()).filter(Boolean).slice(0, 6) : [],
+      maxSelections: normalizeSelectionCount(preset.maxSelections, preset.options?.length || 1)
     };
   }
 
@@ -512,10 +522,11 @@
       if (!question || options.length < 2) {
         throw new Error('invalid_poll_json');
       }
+      const maxSelections = normalizeSelectionCount(parsed?.maxSelections, options.length);
 
       setPollEditing(true);
       pollQuestionInput.value = question;
-      renderOptionInputs(options);
+      renderOptionInputs(options, maxSelections);
       if (pollClipboardStatus) pollClipboardStatus.textContent = `已导入 · ${options.length} 个选项，请确认后保存`;
       toast.textContent = '已读取剪贴板，请确认后保存';
     } catch (error) {
@@ -528,7 +539,7 @@
     }
   }
 
-  function launchPoll(question, options) {
+  function launchPoll(question, options, maxSelections = 1) {
     if (pollLaunchPending) return;
     if (!question || options.length < 2) {
       toast.textContent = '请先填写问题和至少两个选项';
@@ -543,7 +554,7 @@
     pollStartSaved.disabled = true;
     pollLaunch.textContent = '发起中…';
     pollStartSaved.textContent = '发起中…';
-    websocket.send(JSON.stringify({ type: 'poll-start', question, options }));
+    websocket.send(JSON.stringify({ type: 'poll-start', question, options, maxSelections }));
   }
 
   function getPollOptions() {
@@ -566,8 +577,17 @@
       row.querySelector('button').disabled = rows.length <= 2;
     });
     pollAddOption.disabled = rows.length >= 6;
+    const previous = Math.min(Math.max(1, Number(pollMaxSelections.value) || 1), rows.length);
+    pollMaxSelections.textContent = '';
+    for (let count = 1; count <= rows.length; count += 1) {
+      const option = document.createElement('option');
+      option.value = String(count);
+      option.textContent = count === 1 ? '单选' : `${count} 选`;
+      pollMaxSelections.appendChild(option);
+    }
+    pollMaxSelections.value = String(previous);
   }
-  function renderOptionInputs(options = []) {
+  function renderOptionInputs(options = [], maxSelections = 1) {
     pollOptionsInput.textContent = '';
     const values = Array.isArray(options) && options.length ? options : ['', ''];
     values.slice(0, 6).forEach((value) => {
@@ -584,6 +604,7 @@
       pollOptionsInput.appendChild(row);
     });
     refreshOptionLabels();
+    pollMaxSelections.value = String(normalizeSelectionCount(maxSelections, pollOptionsInput.querySelectorAll('.poll-option-row').length));
   }
 
   function setToolsOpen(expanded) {
@@ -1493,24 +1514,28 @@
   pollCancel.addEventListener('click', () => setPollEditing(false));
   pollStartSaved.addEventListener('click', () => {
     loadSelectedPreset();
-    const { question, options } = getSelectedPoll();
-    launchPoll(question, options);
+    const { question, options, maxSelections } = getSelectedPoll();
+    launchPoll(question, options, maxSelections);
   });
-  pollAddOption.addEventListener('click', () => { if (pollOptionsInput.querySelectorAll('input').length < 6) renderOptionInputs([...getPollOptionDrafts(), '']); });
+  pollAddOption.addEventListener('click', () => {
+    if (pollOptionsInput.querySelectorAll('input').length < 6) {
+      renderOptionInputs([...getPollOptionDrafts(), ''], pollMaxSelections.value);
+    }
+  });
   pollSave.addEventListener('click', () => {
-    const { question, options } = getSelectedPoll();
+    const { question, options, maxSelections } = getSelectedPoll();
     if (!question || options.length < 2) {
       toast.textContent = '请先填写问题和至少两个选项';
       return;
     }
-    pollPresetsData[selectedPreset] = { question, options };
+    pollPresetsData[selectedPreset] = { question, options, maxSelections };
     localStorage.setItem('live-share-poll-presets', JSON.stringify(pollPresetsData));
     setPollEditing(false);
     toast.textContent = '投票已保存';
   });
   pollLaunch.addEventListener('click', () => {
-    const { question, options } = getSelectedPoll();
-    launchPoll(question, options);
+    const { question, options, maxSelections } = getSelectedPoll();
+    launchPoll(question, options, maxSelections);
   });
   pollExport.addEventListener('click', exportPollJson);
   pollImport.addEventListener('click', importPollJson);

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Torras 极致开放麦互动系统 - 演讲端</title>
-    <link rel="stylesheet" href="/css/presenter.css?v=20260913-4" />
+    <link rel="stylesheet" href="/css/presenter.css?v=20260914-1" />
   </head>
   <body>
     <main class="stage">
@@ -127,6 +127,7 @@
           </div>
           <div id="pollEditor" class="poll-editor" hidden>
             <label>问题<input id="pollQuestionInput" maxlength="120" placeholder="输入投票问题" /></label>
+            <label class="poll-selection-field">选择数量<select id="pollMaxSelections" aria-label="每人可选数量"><option value="1">单选</option></select></label>
             <div class="poll-options-field"><span>选项</span><div id="pollOptionsInput" class="poll-option-list"></div><button id="pollAddOption" class="poll-add-option" type="button">＋ 添加选项</button></div>
             <div class="poll-clipboard-actions" aria-label="投票配置">
               <span>配置</span>
@@ -172,7 +173,7 @@
       </form>
     </div>
 
-    <script src="/js/pdf-reader.js?v=20260913-4"></script>
-    <script src="/js/presenter.js?v=20260913-4"></script>
+    <script src="/js/pdf-reader.js?v=20260914-1"></script>
+    <script src="/js/presenter.js?v=20260914-1"></script>
   </body>
 </html>

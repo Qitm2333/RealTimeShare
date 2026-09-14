@@ -373,6 +373,18 @@ function normalizePollOptions(rawOptions) {
     .slice(0, 6);
 }
 
+function normalizePollMaxSelections(value, optionCount) {
+  const count = Number(value);
+  return Number.isInteger(count) ? Math.min(Math.max(1, count), Math.max(1, optionCount)) : 1;
+}
+
+function normalizeVoteSelection(value, optionCount) {
+  const raw = Array.isArray(value) ? value : [value];
+  const selections = raw.map(Number);
+  if (selections.some((index) => !Number.isInteger(index) || index < 0 || index >= optionCount)) return [];
+  return Array.from(new Set(selections));
+}
+
 function ensureInteractionUser(userId, nickname) {
   if (!/^u_[a-f0-9]{16}$/.test(String(userId || ''))) return null;
   const canonicalNickname = cleanString(nickname, '匿名', MAX_USER_LENGTH);
@@ -564,6 +576,7 @@ function getPollPayload(poll = activePoll) {
     id: poll.id,
     question: poll.question,
     options: poll.options.slice(),
+    maxSelections: normalizePollMaxSelections(poll.maxSelections, poll.options.length),
     counts: poll.counts.slice(),
     total: poll.total,
     ended: Boolean(poll.ended),
@@ -574,15 +587,16 @@ function getPollPayload(poll = activePoll) {
 
 function getAudiencePollPayload(poll = activePoll, userId = null) {
   if (!poll) return null;
-  const selectedOptionIndex = userId && poll.voters instanceof Map ? poll.voters.get(userId) : undefined;
+  const selectedOptionIndices = userId && poll.voters instanceof Map ? poll.voters.get(userId) : undefined;
   return {
     id: poll.id,
     question: poll.question,
     options: poll.options.slice(),
+    maxSelections: normalizePollMaxSelections(poll.maxSelections, poll.options.length),
     ended: Boolean(poll.ended),
     startedAt: poll.startedAt,
-    hasVoted: Number.isInteger(selectedOptionIndex),
-    selectedOptionIndex: Number.isInteger(selectedOptionIndex) ? selectedOptionIndex : null
+    hasVoted: Array.isArray(selectedOptionIndices) && selectedOptionIndices.length > 0,
+    selectedOptionIndices: Array.isArray(selectedOptionIndices) ? selectedOptionIndices.slice() : []
   };
 }
 
@@ -604,16 +618,18 @@ function loadPollState() {
     if (!parsed || !parsed.id || !Array.isArray(parsed.options) || parsed.options.length < 2) return null;
     const options = normalizePollOptions(parsed.options);
     if (options.length < 2) return null;
+    const maxSelections = normalizePollMaxSelections(parsed.maxSelections, options.length);
     const rawCounts = Array.isArray(parsed.counts) ? parsed.counts : [];
-    const voters = new Map(
-      Object.entries(parsed.voters || {})
-        .filter(([id, index]) => /^u_[a-f0-9]{16}$/.test(id) && Number.isInteger(Number(index)) && Number(index) >= 0 && Number(index) < options.length)
-        .map(([id, index]) => [id, Number(index)])
-    );
+    const voters = new Map();
+    Object.entries(parsed.voters || {}).forEach(([id, selection]) => {
+      if (!/^u_[a-f0-9]{16}$/.test(id)) return;
+      const indices = normalizeVoteSelection(selection, options.length);
+      if (indices.length === maxSelections) voters.set(id, indices);
+    });
     let counts = options.map((_, index) => Math.max(0, Number(rawCounts[index]) || 0));
     if (voters.size) {
       counts = options.map((_, index) => 0);
-      voters.forEach((index) => { counts[index] += 1; });
+      voters.forEach((indices) => indices.forEach((index) => { counts[index] += 1; }));
     }
     const question = cleanString(parsed.question, '', 120);
     if (!question) return null;
@@ -621,8 +637,9 @@ function loadPollState() {
       id: String(parsed.id),
       question,
       options,
+      maxSelections,
       counts,
-      total: counts.reduce((total, count) => total + count, 0),
+      total: voters.size || Math.max(0, Number(parsed.total) || 0),
       voters,
       startedAt: Number(parsed.startedAt) || Date.now(),
       endedAt: parsed.endedAt ? Number(parsed.endedAt) : null,
@@ -1072,6 +1089,7 @@ wss.on('connection', (ws, req) => {
     if (rawMessage?.type === 'poll-start' && ws.role === 'presenter') {
       const question = cleanString(rawMessage.question, '', 120);
       const options = normalizePollOptions(rawMessage.options);
+      const maxSelections = normalizePollMaxSelections(rawMessage.maxSelections, options.length);
       if (!question || options.length < 2) {
         sendPollError(ws, 'invalid-poll');
         return;
@@ -1084,6 +1102,7 @@ wss.on('connection', (ws, req) => {
         id: `poll_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
         question,
         options,
+        maxSelections,
         counts: options.map(() => 0),
         total: 0,
         voters: new Map(),
@@ -1158,21 +1177,25 @@ wss.on('connection', (ws, req) => {
         sendToClient(ws, { type: 'poll-vote-rejected', pollId: activePoll.id, reason: 'poll-ended' });
         return;
       }
-      const optionIndex = Number(rawMessage.optionIndex);
-      if (rawMessage.pollId !== activePoll.id || !Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex >= activePoll.options.length) {
+      const maxSelections = normalizePollMaxSelections(activePoll.maxSelections, activePoll.options.length);
+      const optionIndices = normalizeVoteSelection(
+        Array.isArray(rawMessage.optionIndices) ? rawMessage.optionIndices : rawMessage.optionIndex,
+        activePoll.options.length
+      );
+      if (rawMessage.pollId !== activePoll.id || optionIndices.length !== maxSelections) {
         sendToClient(ws, { type: 'poll-vote-rejected', pollId: activePoll.id, reason: 'invalid-vote' });
         return;
       }
       if (activePoll.voters.has(ws.userId)) {
-        sendToClient(ws, { type: 'poll-vote-rejected', pollId: activePoll.id, reason: 'already-voted', optionIndex: activePoll.voters.get(ws.userId) });
+        sendToClient(ws, { type: 'poll-vote-rejected', pollId: activePoll.id, reason: 'already-voted', optionIndices: activePoll.voters.get(ws.userId) });
         return;
       }
-      activePoll.voters.set(ws.userId, optionIndex);
-      activePoll.counts[optionIndex] += 1;
+      activePoll.voters.set(ws.userId, optionIndices);
+      optionIndices.forEach((optionIndex) => { activePoll.counts[optionIndex] += 1; });
       activePoll.total += 1;
       persistPollState();
       sendToRole('presenter', { type: 'poll-update', poll: getPollPayload() });
-      sendToClient(ws, { type: 'poll-voted', pollId: activePoll.id, optionIndex });
+      sendToClient(ws, { type: 'poll-voted', pollId: activePoll.id, optionIndices });
       return;
     }
 
