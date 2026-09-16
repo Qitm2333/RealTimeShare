@@ -416,6 +416,8 @@
     if (activeView === 'reader' && documentInfo.available) {
       readerPanel.hidden = false;
       pdfReader.load(`/document/current.pdf?v=${encodeURIComponent(documentInfo.updatedAt || Date.now())}`);
+    } else {
+      pdfReader.suspend();
     }
   }
 

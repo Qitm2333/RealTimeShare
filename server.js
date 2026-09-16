@@ -762,12 +762,15 @@ app.get('/document/current.pdf', (req, res) => {
   const contentDisposition = download
     ? `attachment; filename="document.pdf"; filename*=UTF-8''${encodeURIComponent(fileName)}`
     : 'inline';
+  const versionMatches = String(req.query.v || '') === String(documentState.updatedAt || '');
 
   res.sendFile(currentPdfPath, {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': contentDisposition,
-      'Cache-Control': 'no-store'
+      'Cache-Control': versionMatches
+        ? 'public, max-age=31536000, immutable'
+        : 'private, max-age=0, must-revalidate'
     }
   });
 });

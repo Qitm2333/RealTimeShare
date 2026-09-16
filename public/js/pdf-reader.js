@@ -113,6 +113,7 @@
         const pdf = await loadPdfDocument(pdfjs, url);
 
         if (token !== this.renderToken) {
+          await pdf.destroy();
           return;
         }
 
@@ -275,24 +276,43 @@
       this.renderToken = 0;
       this.observer = null;
       this.resizeTimer = 0;
+      this.scrollFrame = 0;
       this.pendingLoad = null;
+      this.renderQueue = [];
+      this.activeRenders = 0;
+      this.maxConcurrentRenders = 2;
+      this.suspended = false;
+      this.destroyTimer = 0;
 
       window.addEventListener('resize', () => {
         window.clearTimeout(this.resizeTimer);
-        this.resizeTimer = window.setTimeout(() => this.renderVisiblePages(), 120);
+        this.resizeTimer = window.setTimeout(() => this.refreshVisiblePages(), 150);
+      });
+      window.addEventListener('scroll', () => this.scheduleViewportMaintenance(), { passive: true });
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          this.suspend();
+        } else if (this.container.getClientRects().length) {
+          this.resume();
+        }
       });
     }
 
     async load(url) {
       if (url === this.pendingLoad) {
         if (this.pdf) {
-          this.renderVisiblePages();
+          this.resume();
+        } else if (this.suspended) {
+          this.pendingLoad = null;
+          return this.load(url);
         }
         return;
       }
 
       const token = ++this.renderToken;
+      await this.destroyDocument();
       this.pendingLoad = url;
+      this.suspended = false;
       this.emptyState.hidden = false;
       this.emptyState.textContent = '正在加载 PDF';
 
@@ -301,6 +321,7 @@
         const pdf = await loadPdfDocument(pdfjs, url);
 
         if (token !== this.renderToken) {
+          await pdf.destroy();
           return;
         }
 
@@ -308,19 +329,28 @@
         this.pdf = pdf;
         this.pageNodes = [];
         this.container.scrollTop = 0;
+        const firstPage = await pdf.getPage(1);
+        if (token !== this.renderToken) {
+          firstPage.cleanup();
+          return;
+        }
+        const firstViewport = firstPage.getViewport({ scale: 1 });
+        const defaultAspectRatio = `${firstViewport.width} / ${firstViewport.height}`;
+        firstPage.cleanup();
 
         for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-          const page = await pdf.getPage(pageNumber);
-          const baseViewport = page.getViewport({ scale: 1 });
           const section = document.createElement('section');
           const canvas = document.createElement('canvas');
 
           section.className = 'continuous-page';
-          section.style.aspectRatio = `${baseViewport.width} / ${baseViewport.height}`;
+          section.style.aspectRatio = defaultAspectRatio;
           canvas.className = 'continuous-page-canvas';
+          canvas.hidden = true;
+          canvas.width = 1;
+          canvas.height = 1;
           section.append(canvas);
           this.container.appendChild(section);
-          this.pageNodes.push({ pageNumber, section, canvas, rendered: false, rendering: false });
+          this.pageNodes.push({ pageNumber, section, canvas, rendered: false, rendering: false, queued: false, renderTask: null, page: null, renderVersion: 0 });
         }
 
         await this.waitForStableLayout(token);
@@ -329,18 +359,20 @@
         }
 
         this.emptyState.hidden = true;
-        await this.renderPage(this.pageNodes[0], token);
         this.observePages();
+        this.enqueuePage(this.pageNodes[0], token);
       } catch (error) {
         if (token !== this.renderToken) {
           return;
         }
 
         console.error('Audience PDF load failed:', error);
+        const failedPdf = this.pdf;
         this.pdf = null;
         this.pendingLoad = null;
         this.removeRenderedPages();
         this.pageNodes = [];
+        await failedPdf?.destroy?.();
         this.emptyState.hidden = false;
         this.emptyState.textContent = 'PDF 加载失败，请重新打开。';
       }
@@ -364,24 +396,24 @@
 
     clear(message = '正在等待演讲者上传 PDF') {
       this.renderToken += 1;
-      this.pdf = null;
       this.pendingLoad = null;
-      this.observer?.disconnect();
-      this.removeRenderedPages();
-      this.pageNodes = [];
+      this.destroyDocument();
       this.emptyState.hidden = false;
       this.emptyState.textContent = message;
     }
 
     removeRenderedPages() {
-      this.pageNodes.forEach((node) => node.section.remove());
+      this.pageNodes.forEach((node) => {
+        this.releasePage(node);
+        node.section.remove();
+      });
     }
 
     observePages() {
       this.observer?.disconnect();
 
       if (!window.IntersectionObserver) {
-        this.pageNodes.forEach((node) => this.renderPage(node, this.renderToken));
+        this.refreshVisiblePages();
         return;
       }
 
@@ -392,17 +424,38 @@
             .forEach((entry) => {
               const node = this.pageNodes.find((item) => item.section === entry.target);
               if (node) {
-                this.renderPage(node, this.renderToken);
+                this.enqueuePage(node, this.renderToken);
               }
             });
+          this.scheduleViewportMaintenance();
         },
         {
-          root: this.container,
-          rootMargin: '520px 0px'
+          root: null,
+          rootMargin: '480px 0px'
         }
       );
 
       this.pageNodes.forEach((node) => this.observer.observe(node.section));
+    }
+
+    enqueuePage(node, token) {
+      if (!node || node.rendered || node.rendering || node.queued || token !== this.renderToken || this.suspended) return;
+      node.queued = true;
+      this.renderQueue.push({ node, token });
+      this.pumpRenderQueue();
+    }
+
+    pumpRenderQueue() {
+      while (!this.suspended && this.activeRenders < this.maxConcurrentRenders && this.renderQueue.length) {
+        const job = this.renderQueue.shift();
+        job.node.queued = false;
+        if (job.token !== this.renderToken || job.node.rendered || job.node.rendering) continue;
+        this.activeRenders += 1;
+        this.renderPage(job.node, job.token).finally(() => {
+          this.activeRenders = Math.max(0, this.activeRenders - 1);
+          this.pumpRenderQueue();
+        });
+      }
     }
 
     async renderPage(node, token) {
@@ -411,10 +464,14 @@
       }
 
       node.rendering = true;
+      const nodeVersion = node.renderVersion;
+      let page = null;
+      let renderTask = null;
 
       try {
-        const page = await this.pdf.getPage(node.pageNumber);
-        if (token !== this.renderToken) {
+        page = await this.pdf.getPage(node.pageNumber);
+        node.page = page;
+        if (token !== this.renderToken || nodeVersion !== node.renderVersion || this.suspended) {
           return;
         }
 
@@ -422,7 +479,9 @@
         const availableWidth = Math.max(240, this.container.clientWidth - 24);
         const scale = availableWidth / baseViewport.width;
         const viewport = page.getViewport({ scale });
-        const outputScale = Math.min(window.devicePixelRatio || 1, 2);
+        const deviceScale = Math.min(window.devicePixelRatio || 1, 1.5);
+        const pixelBudgetScale = Math.sqrt(1800000 / Math.max(1, viewport.width * viewport.height));
+        const outputScale = Math.max(1, Math.min(deviceScale, pixelBudgetScale));
         const context = node.canvas.getContext('2d', { alpha: false });
 
         node.canvas.width = Math.floor(viewport.width * outputScale);
@@ -432,49 +491,122 @@
         context.setTransform(outputScale, 0, 0, outputScale, 0, 0);
         context.fillStyle = '#ffffff';
         context.fillRect(0, 0, viewport.width, viewport.height);
-        await page.render({ canvasContext: context, viewport }).promise;
+        node.canvas.hidden = false;
+        renderTask = page.render({ canvasContext: context, viewport });
+        node.renderTask = renderTask;
+        await renderTask.promise;
+        if (token !== this.renderToken || nodeVersion !== node.renderVersion || this.suspended) return;
         node.section.style.aspectRatio = `${baseViewport.width} / ${baseViewport.height}`;
         node.rendered = true;
+      } catch (error) {
+        const cancelled = error?.name === 'RenderingCancelledException' || token !== this.renderToken || this.suspended;
+        if (!cancelled) console.error(`Audience PDF page ${node.pageNumber} render failed:`, error);
       } finally {
-        node.rendering = false;
+        if (node.renderTask === renderTask) node.renderTask = null;
+        page?.cleanup?.();
+        if (node.page === page) node.page = null;
+        if (nodeVersion === node.renderVersion) node.rendering = false;
       }
     }
 
-    renderVisiblePages() {
-      if (!this.pdf) {
-        return;
-      }
-
-      this.pageNodes.forEach((node) => {
-        node.rendered = false;
-      });
-
+    refreshVisiblePages() {
+      if (!this.pdf || this.suspended) return;
       this.pageNodes
         .filter((node) => {
           const rect = node.section.getBoundingClientRect();
-          return rect.bottom > -520 && rect.top < window.innerHeight + 520;
+          return rect.bottom > -480 && rect.top < window.innerHeight + 480;
         })
-        .forEach((node) => this.renderPage(node, this.renderToken));
+        .forEach((node) => this.enqueuePage(node, this.renderToken));
+      this.releaseDistantPages();
+    }
+
+    scheduleViewportMaintenance() {
+      if (this.scrollFrame || this.suspended) return;
+      this.scrollFrame = window.requestAnimationFrame(() => {
+        this.scrollFrame = 0;
+        this.refreshVisiblePages();
+      });
+    }
+
+    releaseDistantPages() {
+      const releaseDistance = Math.max(1600, window.innerHeight * 2.5);
+      this.pageNodes.forEach((node) => {
+        const rect = node.section.getBoundingClientRect();
+        const hasResources = node.rendered || node.rendering || node.queued || node.canvas.width > 1 || node.canvas.height > 1;
+        if (hasResources && (rect.bottom < -releaseDistance || rect.top > window.innerHeight + releaseDistance)) {
+          this.releasePage(node);
+        }
+      });
+    }
+
+    releasePage(node) {
+      node.renderVersion += 1;
+      this.renderQueue = this.renderQueue.filter((job) => job.node !== node);
+      node.renderTask?.cancel?.();
+      node.renderTask = null;
+      node.page?.cleanup?.();
+      node.page = null;
+      node.rendered = false;
+      node.rendering = false;
+      node.queued = false;
+      node.canvas.hidden = true;
+      node.canvas.width = 1;
+      node.canvas.height = 1;
+      node.canvas.style.width = '';
+      node.canvas.style.height = '';
+    }
+
+    suspend() {
+      if (this.suspended) return;
+      this.suspended = true;
+      this.observer?.disconnect();
+      this.renderQueue = [];
+      this.pageNodes.forEach((node) => this.releasePage(node));
+      window.clearTimeout(this.destroyTimer);
+      this.destroyTimer = window.setTimeout(() => {
+        if (this.suspended) this.destroyDocument(true);
+      }, 20000);
+    }
+
+    resume() {
+      window.clearTimeout(this.destroyTimer);
+      if (!this.pdf) {
+        const url = this.pendingLoad;
+        this.pendingLoad = null;
+        if (url) this.load(url);
+        return;
+      }
+      this.suspended = false;
+      this.observePages();
+      this.refreshVisiblePages();
+    }
+
+    async destroyDocument(preserveUrl = false) {
+      window.clearTimeout(this.destroyTimer);
+      this.observer?.disconnect();
+      this.renderQueue = [];
+      this.removeRenderedPages();
+      this.pageNodes = [];
+      const pdf = this.pdf;
+      this.pdf = null;
+      if (!preserveUrl) this.pendingLoad = null;
+      try {
+        await pdf?.destroy?.();
+      } catch (error) {
+        console.warn('Audience PDF cleanup failed:', error);
+      }
     }
   }
 
   async function loadPdfDocument(pdfjs, url) {
     const options = {
       cMapUrl: '/pdfjs/cmaps/',
-      cMapPacked: true
+      cMapPacked: true,
+      disableAutoFetch: true,
+      disableStream: true,
+      rangeChunkSize: 256 * 1024
     };
-
-    try {
-      return await pdfjs.getDocument({ ...options, url }).promise;
-    } catch (initialError) {
-      const response = await fetch(url, { cache: 'no-store' });
-      if (!response.ok) {
-        throw initialError;
-      }
-
-      const data = new Uint8Array(await response.arrayBuffer());
-      return pdfjs.getDocument({ ...options, data }).promise;
-    }
+    return pdfjs.getDocument({ ...options, url }).promise;
   }
 
   window.LivePdfReader = PdfReader;
