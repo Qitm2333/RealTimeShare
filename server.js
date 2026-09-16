@@ -58,6 +58,7 @@ fs.mkdirSync(dataDir, { recursive: true });
 let gifts = loadGifts();
 let validEffectIds = new Set(gifts.map((gift) => gift.id));
 let audienceMode = 'reader';
+let audienceReadingEnabled = true;
 let activePoll = null;
 let documentState = readDocumentState();
 const users = loadUsers();
@@ -566,7 +567,8 @@ app.get('/api/session', (req, res) => {
 function getDocumentPayload() {
   return {
     ...documentState,
-    audienceMode
+    audienceMode,
+    audienceReadingEnabled
   };
 }
 
@@ -758,6 +760,16 @@ app.get('/document/current.pdf', (req, res) => {
   }
 
   const download = req.query.download === '1';
+  if (!isPresenterAuthenticated(req)) {
+    if (!audienceReadingEnabled) {
+      res.status(403).send('Audience reading is disabled');
+      return;
+    }
+    if (download && audienceMode !== 'reader') {
+      res.status(403).send('Audience downloads are disabled');
+      return;
+    }
+  }
   const fileName = documentState.name || 'document.pdf';
   const contentDisposition = download
     ? `attachment; filename="document.pdf"; filename*=UTF-8''${encodeURIComponent(fileName)}`
@@ -785,6 +797,18 @@ app.post('/api/audience-mode', requirePresenter, (req, res) => {
   audienceMode = mode;
   broadcast({ type: 'system', status: 'audience-mode', mode: audienceMode });
   res.json({ ok: true, mode: audienceMode });
+});
+
+app.post('/api/audience-reading', requirePresenter, (req, res) => {
+  if (typeof req.body?.enabled !== 'boolean') {
+    res.status(400).json({ error: 'invalid_reading_permission' });
+    return;
+  }
+
+  audienceReadingEnabled = req.body.enabled;
+  const document = getDocumentPayload();
+  broadcast({ type: 'document', document });
+  res.json({ ok: true, enabled: audienceReadingEnabled, document });
 });
 
 app.get('/api/gifts', (req, res) => {

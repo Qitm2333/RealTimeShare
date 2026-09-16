@@ -42,7 +42,7 @@
   let quickPhraseList = [];
   let quickPhraseControls = [];
   const controls = [sendButton];
-  let documentInfo = { available: false, audienceMode: 'reader' };
+  let documentInfo = { available: false, audienceMode: 'reader', audienceReadingEnabled: true };
 
   const danmuCooldownMs = 1300;
   const quickPhraseCooldownMs = 950;
@@ -201,22 +201,28 @@
   }
 
   function applyDocumentState(nextDocument) {
-    documentInfo = nextDocument || { available: false, audienceMode: 'reader' };
+    documentInfo = nextDocument || { available: false, audienceMode: 'reader', audienceReadingEnabled: true };
+    const readingEnabled = documentInfo.audienceReadingEnabled !== false;
+    const canRead = Boolean(documentInfo.available && readingEnabled);
 
-    readerPanel.hidden = !documentInfo.available || activeView !== 'reader';
+    if (!canRead) {
+      if (activeView === 'reader') activeView = 'interaction';
+      pdfReader.clear(readingEnabled ? '正在等待演讲者上传 PDF' : '演讲者暂未开放阅读');
+    }
+
+    readerPanel.hidden = !canRead || activeView !== 'reader';
     interactionPanel.hidden = activeView !== 'interaction';
-    readerTab.disabled = !documentInfo.available;
+    readerTab.disabled = !canRead;
+    readerTab.title = canRead ? '' : (documentInfo.available ? '演讲者暂未开放阅读' : '暂无可阅读的 PDF');
+    readerTab.setAttribute('aria-disabled', String(!canRead));
     downloadButton.hidden = !documentInfo.available;
-    const downloadDisabled = documentInfo.audienceMode !== 'reader';
+    const downloadDisabled = !canRead || documentInfo.audienceMode !== 'reader';
     downloadButton.classList.toggle('is-disabled', downloadDisabled);
     downloadButton.setAttribute('aria-disabled', String(downloadDisabled));
     downloadButton.tabIndex = downloadDisabled ? -1 : 0;
     updateViewState(activeView);
 
-    if (!documentInfo.available) {
-      pdfReader.clear();
-      return;
-    }
+    if (!canRead) return;
 
     if (activeView === 'reader') {
       pdfReader.load(`/document/current.pdf?v=${encodeURIComponent(documentInfo.updatedAt || Date.now())}`);
@@ -232,7 +238,7 @@
 
       applyDocumentState(await response.json());
     } catch (error) {
-      applyDocumentState({ available: false, audienceMode: 'reader' });
+      applyDocumentState({ available: false, audienceMode: 'reader', audienceReadingEnabled: true });
     }
   }
 
@@ -410,7 +416,8 @@
   }
 
   function setActiveView(view) {
-    activeView = view === 'reader' ? 'reader' : 'interaction';
+    const canRead = documentInfo.available && documentInfo.audienceReadingEnabled !== false;
+    activeView = view === 'reader' && canRead ? 'reader' : 'interaction';
     updateViewState(activeView);
 
     if (activeView === 'reader' && documentInfo.available) {
@@ -422,7 +429,7 @@
   }
 
   function updateViewState(view) {
-    const isReader = view === 'reader';
+    const isReader = view === 'reader' && documentInfo.available && documentInfo.audienceReadingEnabled !== false;
     interactionPanel.hidden = isReader;
     readerPanel.hidden = !isReader || !documentInfo.available;
     interactionTab.classList.toggle('is-active', !isReader);
@@ -675,6 +682,6 @@
 
   nickname.readOnly = true;
   downloadButton.addEventListener('click', (event) => {
-    if (documentInfo?.audienceMode !== 'reader') event.preventDefault();
+    if (documentInfo?.audienceMode !== 'reader' || documentInfo?.audienceReadingEnabled === false) event.preventDefault();
   });
 })();

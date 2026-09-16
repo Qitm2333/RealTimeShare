@@ -420,10 +420,17 @@ body {
   background: #fff;
 }
 
-.audience-mode-panel button.is-reader {
+.audience-mode-panel button.is-enabled {
   border-color: var(--brand);
   background: var(--brand);
   color: #1d1d1f;
+}
+
+.audience-mode-panel button:disabled {
+  border-color: #dedee2;
+  background: #e8e8ed;
+  color: #98989d;
+  cursor: not-allowed;
 }
 
 .slide-frame {
@@ -1362,6 +1369,7 @@ body {
   .pdf-toolbar {
     flex-wrap: wrap;
     gap: 8px;
+    max-height: 176px;
     padding: 8px 10px;
   }
 
@@ -1399,7 +1407,7 @@ body {
   }
 
   .scoreboard {
-    top: 74px;
+    top: 150px;
     right: 12px;
     flex-wrap: wrap;
     justify-content: flex-end;
@@ -1426,7 +1434,7 @@ body {
   }
 
   .combo-badge {
-    top: 186px;
+    top: 262px;
     right: 12px;
     max-width: calc(100vw - 24px);
   }

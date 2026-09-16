@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Torras 极致开放麦互动系统 - 演讲端</title>
-    <link rel="stylesheet" href="/css/presenter.css?v=20260916-2" />
+    <link rel="stylesheet" href="/css/presenter.css?v=20260916-3" />
   </head>
   <body>
     <main class="stage">
@@ -22,9 +22,10 @@
           </div>
           <button id="pollToggle" class="secondary-button" type="button" aria-haspopup="dialog" aria-expanded="false">投票</button>
           <button id="giftToggle" class="gift-toggle is-on" type="button" aria-pressed="true">礼物开</button>
-          <div class="audience-mode-panel" aria-label="观众内容模式">
-            <span>观众内容</span>
-            <button id="audienceModeToggle" type="button" aria-pressed="false">仅互动</button>
+          <div class="audience-mode-panel" aria-label="观众 PDF 权限">
+            <span>观众权限</span>
+            <button id="audienceReadToggle" type="button" aria-pressed="true">阅读</button>
+            <button id="audienceModeToggle" type="button" aria-pressed="false">下载</button>
           </div>
           <div class="pdf-reader-actions" aria-label="PDF 阅读控制">
             <button id="pdfPrevious" type="button" aria-label="上一页">‹</button>
@@ -174,6 +175,6 @@
     </div>
 
     <script src="/js/pdf-reader.js?v=20260916-3"></script>
-    <script src="/js/presenter.js?v=20260916-2"></script>
+    <script src="/js/presenter.js?v=20260916-3"></script>
   </body>
 </html>

@@ -477,6 +477,13 @@ h1 {
   box-shadow: 0 4px 12px rgba(255, 187, 62, 0.24);
 }
 
+.nav-item:disabled {
+  background: transparent;
+  color: #aeaeb2;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
 .nav-item:focus-visible {
   outline: 3px solid var(--brand-ring);
   outline-offset: 2px;

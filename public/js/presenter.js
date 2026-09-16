@@ -45,6 +45,7 @@
   const qrSave = document.getElementById('qrSave');
   const qrHint = document.getElementById('qrHint');
   const giftToggle = document.getElementById('giftToggle');
+  const audienceReadToggle = document.getElementById('audienceReadToggle');
   const audienceModeToggle = document.getElementById('audienceModeToggle');
   const pollToggle = document.getElementById('pollToggle');
   const pollPanel = document.getElementById('pollPanel');
@@ -146,6 +147,7 @@
   let connectionText = '未连接';
   let audienceCount = 0;
   let audienceMode = 'reader';
+  let audienceReadingEnabled = true;
   let lastStats;
   let fullscreenUiTimer;
   let lastFullscreenState = false;
@@ -774,6 +776,8 @@
 
   function applyDocument(nextDocument) {
     documentInfo = nextDocument || { available: false };
+    if (typeof documentInfo.audienceMode === 'string') setAudienceMode(documentInfo.audienceMode);
+    if (typeof documentInfo.audienceReadingEnabled === 'boolean') setAudienceReadingEnabled(documentInfo.audienceReadingEnabled);
     if (pdfFileButton) pdfFileButton.textContent = documentInfo.available ? '替换 PDF' : '上传 PDF';
     pdfStatus.textContent = documentInfo.available ? '已就绪' : '未打开';
 
@@ -1284,9 +1288,18 @@
 
   function setAudienceMode(mode) {
     audienceMode = mode === 'reader' ? 'reader' : 'interaction';
-    audienceModeToggle.textContent = audienceMode === 'reader' ? '可下载' : '仅阅读';
-    audienceModeToggle.classList.toggle('is-reader', audienceMode === 'reader');
+    audienceModeToggle.classList.toggle('is-enabled', audienceMode === 'reader');
     audienceModeToggle.setAttribute('aria-pressed', String(audienceMode === 'reader'));
+    audienceModeToggle.title = audienceMode === 'reader' ? '观众可以下载 PDF' : '观众只能在线阅读';
+    audienceModeToggle.disabled = !audienceReadingEnabled;
+  }
+
+  function setAudienceReadingEnabled(enabled) {
+    audienceReadingEnabled = Boolean(enabled);
+    audienceReadToggle.classList.toggle('is-enabled', audienceReadingEnabled);
+    audienceReadToggle.setAttribute('aria-pressed', String(audienceReadingEnabled));
+    audienceReadToggle.title = audienceReadingEnabled ? '观众可以阅读 PDF' : '观众无法阅读 PDF';
+    audienceModeToggle.disabled = !audienceReadingEnabled;
   }
 
   async function toggleAudienceMode() {
@@ -1306,9 +1319,30 @@
       }
 
       setAudienceMode(nextMode);
-      toast.textContent = nextMode === 'reader' ? '观众可以阅读当前 PDF' : '观众仅可参与互动';
+      toast.textContent = nextMode === 'reader' ? '观众可以下载当前 PDF' : '观众只能在线阅读';
     } catch (error) {
-      toast.textContent = '观众模式切换失败';
+      toast.textContent = '下载权限切换失败';
+    }
+  }
+
+  async function toggleAudienceReading() {
+    const enabled = !audienceReadingEnabled;
+
+    try {
+      const response = await fetch('/api/audience-reading', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ enabled })
+      });
+
+      if (!response.ok) throw new Error('Audience reading update failed');
+      const result = await response.json();
+      setAudienceReadingEnabled(result.enabled);
+      toast.textContent = result.enabled ? '观众可以阅读当前 PDF' : '已关闭观众阅读';
+    } catch (error) {
+      toast.textContent = '阅读权限切换失败';
     }
   }
 
@@ -1579,6 +1613,7 @@
   });
   setLotteryCount(1);
   sessionReset.addEventListener('click', resetSession);
+  audienceReadToggle.addEventListener('click', toggleAudienceReading);
   audienceModeToggle.addEventListener('click', toggleAudienceMode);
   qrToggle.addEventListener('click', () => setQrExpanded(qrCard.hidden));
   qrClose.addEventListener('click', () => setQrExpanded(false));
@@ -1596,6 +1631,7 @@
   });
   giftToggle.addEventListener('click', () => setGiftEffectsEnabled(!giftEffectsEnabled));
   setGiftEffectsEnabled(giftEffectsEnabled);
+  setAudienceReadingEnabled(audienceReadingEnabled);
   setAudienceMode(audienceMode);
   revealFullscreenUi();
 
