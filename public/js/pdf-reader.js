@@ -281,8 +281,12 @@
       this.renderQueue = [];
       this.activeRenders = 0;
       this.maxConcurrentRenders = 2;
+      // Canvas backing stores use roughly four bytes per pixel.
+      this.maxCanvasPixels = 10 * 1024 * 1024;
+      this.pageUseSequence = 0;
       this.suspended = false;
       this.destroyTimer = 0;
+      this.documentKeepAliveMs = 5 * 60 * 1000;
 
       window.addEventListener('resize', () => {
         window.clearTimeout(this.resizeTimer);
@@ -328,6 +332,7 @@
         this.removeRenderedPages();
         this.pdf = pdf;
         this.pageNodes = [];
+        this.pageUseSequence = 0;
         this.container.scrollTop = 0;
         const firstPage = await pdf.getPage(1);
         if (token !== this.renderToken) {
@@ -353,7 +358,7 @@
           pageStatus.textContent = pageNumber === 1 ? '正在打开第 1 页' : `第 ${pageNumber} 页加载中`;
           section.append(canvas, pageStatus);
           this.container.appendChild(section);
-          this.pageNodes.push({ pageNumber, section, canvas, pageStatus, rendered: false, rendering: false, queued: false, renderTask: null, page: null, renderVersion: 0 });
+          this.pageNodes.push({ pageNumber, section, canvas, pageStatus, rendered: false, rendering: false, queued: false, renderTask: null, page: null, renderVersion: 0, lastUsedAt: 0 });
         }
 
         await this.waitForStableLayout(token);
@@ -434,6 +439,7 @@
             .forEach((entry) => {
               const node = this.pageNodes.find((item) => item.section === entry.target);
               if (node) {
+                this.touchPage(node);
                 this.enqueuePage(node, this.renderToken);
               }
             });
@@ -515,6 +521,8 @@
         node.section.classList.remove('is-loading');
         node.section.classList.add('is-rendered');
         node.rendered = true;
+        this.touchPage(node);
+        this.enforceCanvasBudget();
       } catch (error) {
         const cancelled = error?.name === 'RenderingCancelledException' || token !== this.renderToken || this.suspended;
         if (!cancelled) {
@@ -534,13 +542,15 @@
 
     refreshVisiblePages() {
       if (!this.pdf || this.suspended) return;
-      this.pageNodes
-        .filter((node) => {
-          const rect = node.section.getBoundingClientRect();
-          return rect.bottom > -480 && rect.top < window.innerHeight + 480;
-        })
-        .forEach((node) => this.enqueuePage(node, this.renderToken));
-      this.releaseDistantPages();
+      const visibleNodes = this.pageNodes.filter((node) => {
+        const rect = node.section.getBoundingClientRect();
+        return rect.bottom > -480 && rect.top < window.innerHeight + 480;
+      });
+      visibleNodes.forEach((node) => {
+        this.touchPage(node);
+        this.enqueuePage(node, this.renderToken);
+      });
+      this.enforceCanvasBudget();
     }
 
     scheduleViewportMaintenance() {
@@ -551,15 +561,35 @@
       });
     }
 
-    releaseDistantPages() {
-      const releaseDistance = Math.max(1600, window.innerHeight * 2.5);
-      this.pageNodes.forEach((node) => {
-        const rect = node.section.getBoundingClientRect();
-        const hasResources = node.rendered || node.rendering || node.queued || node.canvas.width > 1 || node.canvas.height > 1;
-        if (hasResources && (rect.bottom < -releaseDistance || rect.top > window.innerHeight + releaseDistance)) {
-          this.releasePage(node);
-        }
-      });
+    touchPage(node) {
+      node.lastUsedAt = ++this.pageUseSequence;
+    }
+
+    isNearViewport(node) {
+      const rect = node.section.getBoundingClientRect();
+      return rect.bottom > -480 && rect.top < window.innerHeight + 480;
+    }
+
+    getCanvasPixels(node) {
+      return node.canvas.width > 1 && node.canvas.height > 1
+        ? node.canvas.width * node.canvas.height
+        : 0;
+    }
+
+    enforceCanvasBudget() {
+      let totalPixels = this.pageNodes.reduce((total, node) => total + this.getCanvasPixels(node), 0);
+      if (totalPixels <= this.maxCanvasPixels) return;
+
+      const candidates = this.pageNodes
+        // Keep the opening spread hot so returning to the top is immediate.
+        .filter((node) => node.pageNumber > 2 && node.rendered && !node.rendering && !this.isNearViewport(node))
+        .sort((left, right) => left.lastUsedAt - right.lastUsedAt);
+
+      for (const node of candidates) {
+        if (totalPixels <= this.maxCanvasPixels) break;
+        totalPixels -= this.getCanvasPixels(node);
+        this.releasePage(node);
+      }
     }
 
     releasePage(node) {
@@ -572,6 +602,7 @@
       node.rendered = false;
       node.rendering = false;
       node.queued = false;
+      node.lastUsedAt = 0;
       node.section.classList.remove('is-loading', 'is-rendered', 'is-error');
       node.pageStatus.hidden = false;
       node.pageStatus.textContent = `第 ${node.pageNumber} 页加载中`;
@@ -591,7 +622,7 @@
       window.clearTimeout(this.destroyTimer);
       this.destroyTimer = window.setTimeout(() => {
         if (this.suspended) this.destroyDocument(true);
-      }, 20000);
+      }, this.documentKeepAliveMs);
     }
 
     resume() {
