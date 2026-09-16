@@ -301,7 +301,7 @@ body {
 
 .tools-dialog { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); overscroll-behavior: contain; }
 .tools-dialog[hidden] { display: none; }
-.tools-scrim { position: absolute; inset: 0; background: rgba(29, 29, 31, 0.28); backdrop-filter: blur(4px); }
+.tools-scrim { position: absolute; inset: 0; background: rgba(29, 29, 31, 0.18); }
 .tools-card { position: relative; width: min(520px, 100%); max-height: min(760px, 100%); overflow: auto; padding: 18px; border: 1px solid #d2d2d7; border-radius: 12px; background: rgba(255,255,255,.98); box-shadow: 0 18px 50px rgba(0,0,0,.18); color: #1d1d1f; overscroll-behavior: contain; }
 .poll-panel-head,.poll-editor-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .poll-panel-head button { width: 32px; height: 32px; border: 0; border-radius: 8px; background: #f5f5f7; color: #6e6e73; font-size: 22px; cursor: pointer; }
@@ -1070,6 +1070,16 @@ body {
   justify-items: end;
   gap: 10px;
   color: #111827;
+}
+
+@media (min-width: 720px) {
+  body.tools-open .tools-dialog {
+    padding-right: 224px;
+  }
+
+  body.tools-open .qr-panel {
+    z-index: 31;
+  }
 }
 
 .qr-toggle,

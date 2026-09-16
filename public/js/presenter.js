@@ -98,6 +98,7 @@
   let latestRankingStats = { totals: { gifts: 0, danmu: 0 }, ranking: [] };
   let lotteryResultData = null;
   let toolsPreviousFocus = null;
+  let toolsQrWasExpanded = false;
   let pollLaunchPending = false;
   let pollEditing = false;
   let lotterySelectedCount = 1;
@@ -615,6 +616,9 @@
 
     if (next) {
       toolsPreviousFocus = document.activeElement;
+      toolsQrWasExpanded = !qrCard.hidden;
+      document.body.classList.add('tools-open');
+      setQrExpanded(true);
       pollPanel.hidden = false;
       pollPanel.setAttribute('aria-hidden', 'false');
       pollToggle.setAttribute('aria-expanded', 'true');
@@ -627,6 +631,8 @@
     }
 
     pollPanel.hidden = true;
+    document.body.classList.remove('tools-open');
+    setQrExpanded(toolsQrWasExpanded);
     pollPanel.setAttribute('aria-hidden', 'true');
     pollToggle.setAttribute('aria-expanded', 'false');
     pollToggle.classList.remove('is-open');

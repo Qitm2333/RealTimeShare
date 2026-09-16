@@ -341,6 +341,7 @@
         for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
           const section = document.createElement('section');
           const canvas = document.createElement('canvas');
+          const pageStatus = document.createElement('span');
 
           section.className = 'continuous-page';
           section.style.aspectRatio = defaultAspectRatio;
@@ -348,9 +349,11 @@
           canvas.hidden = true;
           canvas.width = 1;
           canvas.height = 1;
-          section.append(canvas);
+          pageStatus.className = 'continuous-page-status';
+          pageStatus.textContent = pageNumber === 1 ? '正在打开第 1 页' : `第 ${pageNumber} 页加载中`;
+          section.append(canvas, pageStatus);
           this.container.appendChild(section);
-          this.pageNodes.push({ pageNumber, section, canvas, rendered: false, rendering: false, queued: false, renderTask: null, page: null, renderVersion: 0 });
+          this.pageNodes.push({ pageNumber, section, canvas, pageStatus, rendered: false, rendering: false, queued: false, renderTask: null, page: null, renderVersion: 0 });
         }
 
         await this.waitForStableLayout(token);
@@ -359,8 +362,15 @@
         }
 
         this.emptyState.hidden = true;
+        // Give the first page exclusive access to the network and worker. On
+        // non-linearized PDFs, rendering nearby pages in parallel delays the
+        // first useful frame substantially on mobile connections.
+        await this.renderPage(this.pageNodes[0], token);
+        if (token !== this.renderToken || this.suspended) {
+          return;
+        }
         this.observePages();
-        this.enqueuePage(this.pageNodes[0], token);
+        this.refreshVisiblePages();
       } catch (error) {
         if (token !== this.renderToken) {
           return;
@@ -464,6 +474,10 @@
       }
 
       node.rendering = true;
+      node.section.classList.add('is-loading');
+      node.section.classList.remove('is-rendered', 'is-error');
+      node.pageStatus.hidden = false;
+      node.pageStatus.textContent = node.pageNumber === 1 ? '正在打开第 1 页' : `第 ${node.pageNumber} 页加载中`;
       const nodeVersion = node.renderVersion;
       let page = null;
       let renderTask = null;
@@ -491,16 +505,25 @@
         context.setTransform(outputScale, 0, 0, outputScale, 0, 0);
         context.fillStyle = '#ffffff';
         context.fillRect(0, 0, viewport.width, viewport.height);
-        node.canvas.hidden = false;
         renderTask = page.render({ canvasContext: context, viewport });
         node.renderTask = renderTask;
         await renderTask.promise;
         if (token !== this.renderToken || nodeVersion !== node.renderVersion || this.suspended) return;
         node.section.style.aspectRatio = `${baseViewport.width} / ${baseViewport.height}`;
+        node.canvas.hidden = false;
+        node.pageStatus.hidden = true;
+        node.section.classList.remove('is-loading');
+        node.section.classList.add('is-rendered');
         node.rendered = true;
       } catch (error) {
         const cancelled = error?.name === 'RenderingCancelledException' || token !== this.renderToken || this.suspended;
-        if (!cancelled) console.error(`Audience PDF page ${node.pageNumber} render failed:`, error);
+        if (!cancelled) {
+          node.section.classList.remove('is-loading');
+          node.section.classList.add('is-error');
+          node.pageStatus.hidden = false;
+          node.pageStatus.textContent = `第 ${node.pageNumber} 页加载失败，请稍后重试`;
+          console.error(`Audience PDF page ${node.pageNumber} render failed:`, error);
+        }
       } finally {
         if (node.renderTask === renderTask) node.renderTask = null;
         page?.cleanup?.();
@@ -549,6 +572,9 @@
       node.rendered = false;
       node.rendering = false;
       node.queued = false;
+      node.section.classList.remove('is-loading', 'is-rendered', 'is-error');
+      node.pageStatus.hidden = false;
+      node.pageStatus.textContent = `第 ${node.pageNumber} 页加载中`;
       node.canvas.hidden = true;
       node.canvas.width = 1;
       node.canvas.height = 1;
@@ -604,7 +630,7 @@
       cMapPacked: true,
       disableAutoFetch: true,
       disableStream: true,
-      rangeChunkSize: 256 * 1024
+      rangeChunkSize: 1024 * 1024
     };
     return pdfjs.getDocument({ ...options, url }).promise;
   }
