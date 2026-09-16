@@ -1419,6 +1419,10 @@
         setAudienceMode(message.mode);
       }
 
+      if (message.type === 'system' && message.status === 'audience-reading') {
+        setAudienceReadingEnabled(message.enabled);
+      }
+
       if (message.type === 'system' && message.status === 'session-reset') {
         clearSessionEffects();
       }

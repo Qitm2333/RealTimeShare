@@ -807,7 +807,7 @@ app.post('/api/audience-reading', requirePresenter, (req, res) => {
 
   audienceReadingEnabled = req.body.enabled;
   const document = getDocumentPayload();
-  broadcast({ type: 'document', document });
+  broadcast({ type: 'system', status: 'audience-reading', enabled: audienceReadingEnabled });
   res.json({ ok: true, enabled: audienceReadingEnabled, document });
 });
 

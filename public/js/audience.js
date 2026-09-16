@@ -496,6 +496,9 @@
       if (message.type === 'system' && message.status === 'audience-mode') {
         applyDocumentState({ ...documentInfo, audienceMode: message.mode });
       }
+      if (message.type === 'system' && message.status === 'audience-reading') {
+        applyDocumentState({ ...documentInfo, audienceReadingEnabled: message.enabled });
+      }
       if (['poll-start', 'poll-state'].includes(message.type)) showPoll(message.poll);
       if (message.type === 'poll-end') { pendingVoteIndices = null; showPoll(null); }
       if (message.type === 'poll-voted') { showVoteSuccess(message.pollId, message.optionIndices); }
