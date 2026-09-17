@@ -4,6 +4,9 @@ node_modules/
 public/downloads/chrome-profile/
 public/downloads/edge-pdf-profile/
 .qa-server/
+release/
+tmp/
+.tmp-permissions/
 
 # Runtime state created by the local interaction server
 data/users.json

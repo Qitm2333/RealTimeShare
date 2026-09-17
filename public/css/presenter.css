@@ -1,15 +1,47 @@
+@font-face {
+  font-family: "FT Terra";
+  src: url("/assets/fonts/FTTerra-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "FT Terra";
+  src: url("/assets/fonts/FTTerra-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "FT Terra";
+  src: url("/assets/fonts/FTTerra-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "FT Terra";
+  src: url("/assets/fonts/FTTerra-ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
 }
 
 :root {
-  --brand: #ffbb3e;
-  --brand-strong: #a86100;
-  --brand-soft: #fff8e8;
-  --brand-ring: rgba(255, 187, 62, 0.24);
-  --brand-shadow: rgba(255, 187, 62, 0.18);
-  --page: #f7f3ef;
-  --surface: #fffdfb;
+  --brand: #ff5b00;
+  --brand-strong: #c74600;
+  --brand-soft: #fff1eb;
+  --brand-ring: rgba(255, 91, 0, 0.22);
+  --brand-shadow: rgba(255, 91, 0, 0.18);
+  --page: #f6f6f4;
+  --surface: #fff;
   --ink: #1d1d1f;
 }
 
@@ -26,7 +58,7 @@ body {
   background: var(--page);
   color: var(--ink);
   font-family:
-    Inter, "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    "FT Terra", "Microsoft YaHei UI", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .stage {
@@ -135,8 +167,8 @@ body {
   padding: 0 12px;
   background: var(--brand);
   border-color: var(--brand);
-  color: #1d1d1f;
-  box-shadow: 0 5px 12px rgba(255, 187, 62, 0.2);
+  color: #fff;
+  box-shadow: 0 5px 12px rgba(255, 91, 0, 0.2);
 }
 .file-button.is-busy { pointer-events:none; opacity:.55; }
 
@@ -213,7 +245,7 @@ body {
 }
 
 .pdf-status:not(:empty) {
-  border-color: rgba(255, 187, 62, 0.42);
+  border-color: rgba(255, 91, 0, 0.42);
   background: var(--brand-soft);
   color: var(--brand-strong);
 }
@@ -328,10 +360,10 @@ body {
 .poll-content-card { display:grid; gap:7px; width:100%; padding:13px 14px; border:1px solid #d2d2d7; border-radius:9px; background:#fff; color:#1d1d1f; text-align:left; cursor:pointer; }
 .poll-content-card strong { overflow:hidden; font-size:15px; text-overflow:ellipsis; white-space:nowrap; }
 .poll-content-card span { overflow:hidden; color:#6e6e73; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
-.poll-content-card.is-active { border-color:var(--brand); box-shadow:0 0 0 2px rgba(255,187,62,.18); }
+.poll-content-card.is-active { border-color:var(--brand); box-shadow:0 0 0 2px rgba(255,91,0,.18); }
 .poll-home-actions { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); gap:8px; }
 .poll-home-actions button { min-height:36px; padding:0 12px; border:1px solid #d2d2d7; border-radius:7px; background:#fff; color:#1d1d1f; font:inherit; font-size:13px; font-weight:800; cursor:pointer; }
-.poll-home-actions .primary-button { border-color:var(--brand); background:var(--brand); color:#1d1d1f; }
+.poll-home-actions .primary-button { border-color:var(--brand); background:var(--brand); color:#fff; }
 .poll-editor { display:grid; gap:10px; }
 .poll-editor label { display:grid; gap:5px; color:#6e6e73; font-size:12px; font-weight:700; }
 .poll-editor input,.poll-editor select { width:100%; min-height:38px; padding:8px; border:1px solid #d2d2d7; border-radius:7px; background:#fff; color:#1d1d1f; font:inherit; }
@@ -350,7 +382,7 @@ body {
 .poll-clipboard-status { min-height:16px; color:var(--brand-strong); font-size:11px; font-weight:700; }
 .poll-editor-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
 .poll-editor-actions button { width:100%; min-height:40px; padding:0 10px; border:1px solid #d2d2d7; border-radius:7px; background:#fff; cursor:pointer; }
-.poll-editor-actions .primary-button { background:var(--brand); border-color:var(--brand); color:#1d1d1f; }
+.poll-editor-actions .primary-button { background:var(--brand); border-color:var(--brand); color:#fff; }
 .poll-editor-actions .danger-button { color:#b42318; }
 .poll-live > strong { display:block; margin-bottom:16px; font-size:20px; }
 .poll-result { position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; margin:10px 0; padding:10px 12px; border-radius:8px; background:#f5f5f7; }
@@ -370,12 +402,12 @@ body {
 .ranking-user small { color:#6e6e73; font-size:11px; }
 .ranking-score { color:var(--brand-strong); font-size:13px; font-variant-numeric:tabular-nums; }
 .lottery-controls { display:grid; gap:12px; padding:12px; border:1px solid #e5e5ea; border-radius:10px; background:#fafafa; }
-.lottery-roller { display:grid; justify-items:center; gap:6px; margin:12px 0; padding:18px 14px; border:1px solid rgba(255,187,62,.45); border-radius:12px; background:linear-gradient(135deg,#fff8e8,#fffdfb 55%,#fff1d2); text-align:center; box-shadow:0 8px 22px rgba(255,187,62,.12); }
+.lottery-roller { display:grid; justify-items:center; gap:6px; margin:12px 0; padding:18px 14px; border:1px solid rgba(255,91,0,.38); border-radius:12px; background:var(--brand-soft); text-align:center; box-shadow:0 8px 22px rgba(255,91,0,.12); }
 .lottery-roller[hidden] { display:none; }
-.lottery-roller-kicker { color:#a86100; font-size:11px; font-weight:800; letter-spacing:.08em; }
+.lottery-roller-kicker { color:var(--brand-strong); font-size:11px; font-weight:800; letter-spacing:0; }
 .lottery-roller strong { min-height:32px; color:#1d1d1f; font-size:22px; line-height:1.4; }
 .lottery-roller-dots { display:flex; gap:5px; }
-.lottery-roller-dots i { display:block; width:6px; height:6px; border-radius:50%; background:#ffbb3e; animation: lottery-dot 700ms ease-in-out infinite; }
+.lottery-roller-dots i { display:block; width:6px; height:6px; border-radius:50%; background:var(--brand); animation: lottery-dot 700ms ease-in-out infinite; }
 .lottery-roller-dots i:nth-child(2) { animation-delay:120ms; }
 .lottery-roller-dots i:nth-child(3) { animation-delay:240ms; }
 @keyframes lottery-dot { 0%,100% { opacity:.35; transform:translateY(0); } 50% { opacity:1; transform:translateY(-4px); } }
@@ -386,8 +418,8 @@ body {
 .lottery-count-options button:hover { border-color:var(--brand); color:var(--brand-strong); }
 .lottery-count-options button.is-selected { border-color:var(--brand); background:var(--brand-soft); color:var(--brand-strong); box-shadow:inset 0 0 0 1px var(--brand); }
 .lottery-count-options button:disabled { opacity:.45; cursor:not-allowed; }
-.lottery-draw-button { display:flex; width:100%; min-height:44px; align-items:center; justify-content:center; gap:8px; border:1px solid var(--brand); border-radius:8px; background:var(--brand); color:#1d1d1f; font:inherit; font-size:14px; font-weight:800; cursor:pointer; transition:background 160ms ease,border-color 160ms ease,transform 160ms ease,box-shadow 160ms ease; }
-.lottery-draw-button:hover:not(:disabled) { border-color:var(--brand-strong); background:#f6aa27; box-shadow:0 6px 14px var(--brand-shadow); transform:translateY(-1px); }
+.lottery-draw-button { display:flex; width:100%; min-height:44px; align-items:center; justify-content:center; gap:8px; border:1px solid var(--brand); border-radius:8px; background:var(--brand); color:#fff; font:inherit; font-size:14px; font-weight:800; cursor:pointer; transition:background 160ms ease,border-color 160ms ease,transform 160ms ease,box-shadow 160ms ease; }
+.lottery-draw-button:hover:not(:disabled) { border-color:#e55200; background:#e55200; color:#fff; box-shadow:0 6px 14px var(--brand-shadow); transform:translateY(-1px); }
 .lottery-draw-button:disabled { border-color:#d2d2d7; background:#e8e8ed; color:#98989d; cursor:not-allowed; box-shadow:none; }
 .lottery-draw-button > span:first-child { font-size:18px; line-height:1; }
 .lottery-result { display:grid; gap:7px; margin-top:14px; padding-top:14px; border-top:1px solid #d2d2d7; }
@@ -395,7 +427,10 @@ body {
 .lottery-winner { padding:9px 10px; border-radius:8px; background:#f5f5f7; font-size:13px; }
 .presenter-lottery-dialog { position:fixed; inset:0; z-index:35; display:grid; place-items:center; padding:24px; background:rgba(29,29,31,.34); }
 .presenter-lottery-dialog[hidden] { display:none; }
-.presenter-lottery-card { display:grid; justify-items:center; width:min(360px,100%); padding:28px 28px 24px; border:1px solid #ded9d0; border-radius:14px; background:#fffefa; box-shadow:0 18px 42px rgba(29,29,31,.2); text-align:center; animation: winner-card-in 260ms ease-out both; }
+.presenter-lottery-card { position:relative; display:grid; justify-items:center; width:min(360px,100%); padding:28px 28px 24px; border:1px solid #ded9d0; border-radius:14px; background:#fffefa; box-shadow:0 18px 42px rgba(29,29,31,.2); text-align:center; }
+.presenter-lottery-close { position:absolute; top:10px; right:10px; display:grid; width:32px; height:32px; place-items:center; padding:0; border:0; border-radius:50%; background:transparent; color:#77736b; font:inherit; font-size:24px; line-height:1; cursor:pointer; }
+.presenter-lottery-close:hover { background:#f1efeb; color:#242321; }
+.presenter-lottery-close:focus-visible { outline:3px solid rgba(255,91,0,.24); outline-offset:2px; }
 .presenter-lottery-card h2 { margin:0; color:#242321; font-size:24px; }
 .presenter-lottery-winners { display:grid; gap:8px; width:100%; margin:16px 0 20px; }
 .presenter-lottery-winner { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border-radius:8px; background:#f6f4f0; text-align:left; }
@@ -404,8 +439,7 @@ body {
 .presenter-lottery-card .primary-button { min-width:132px; min-height:40px; padding:0 20px; border:0; border-radius:999px; background:#242321; color:#fffefa; font-size:14px; font-weight:700; letter-spacing:.01em; box-shadow:none; transition:background 160ms ease,transform 160ms ease; }
 .presenter-lottery-card .primary-button:hover { background:#3a3834; transform:translateY(-1px); }
 .presenter-lottery-card .primary-button:active { transform:scale(.98); }
-@keyframes winner-card-in { from { opacity:0; transform:translateY(12px) scale(.96); } to { opacity:1; transform:translateY(0) scale(1); } }
-#pollToggle.is-open { border-color:var(--brand); background:var(--brand); color:#1d1d1f; }
+#pollToggle.is-open { border-color:var(--brand); background:var(--brand); color:#fff; }
 
 @media (max-width: 560px) {
   .tools-card { padding: 14px; border-radius: 10px; }
@@ -423,7 +457,7 @@ body {
 .audience-mode-panel button.is-enabled {
   border-color: var(--brand);
   background: var(--brand);
-  color: #1d1d1f;
+  color: #fff;
 }
 
 .audience-mode-panel button:disabled {
@@ -496,12 +530,12 @@ body {
 
 .quick-danmu {
   position: absolute;
-  left: auto;
+  left: 100%;
   display: flex;
   align-items: center;
   width: min(150px, 26vw);
   pointer-events: none;
-  animation: quick-fly-left linear forwards;
+  animation: fly-left linear forwards;
 }
 
 .quick-danmu img {
@@ -509,13 +543,6 @@ body {
   width: 100%;
   height: auto;
   filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.3));
-}
-
-@keyframes quick-fly-left {
-  from { transform: translateX(0) scale(0.92); opacity: 0; }
-  8% { opacity: 1; }
-  88% { opacity: 1; }
-  to { transform: translateX(calc(-100vw - 150px)) scale(1); opacity: 0; }
 }
 
 @keyframes fly-left {
@@ -961,7 +988,7 @@ body {
 .gift-toggle.is-on {
   border-color: var(--brand);
   background: var(--brand);
-  color: #1d1d1f;
+  color: #fff;
 }
 
 .gift-toggle:focus-visible {
@@ -988,7 +1015,7 @@ body {
 
 .combo-badge {
   position: absolute;
-  top: 188px;
+  top: 142px;
   right: 24px;
   z-index: 10;
   max-width: min(390px, calc(100vw - 48px));
@@ -1031,7 +1058,7 @@ body {
 .presenter-bar {
   position: absolute;
   right: 24px;
-  bottom: 22px;
+  bottom: 28px;
   left: 24px;
   z-index: 8;
   display: flex;
@@ -1071,7 +1098,7 @@ body {
 .qr-panel {
   position: absolute;
   right: 24px;
-  bottom: 76px;
+  bottom: 98px;
   z-index: 12;
   display: grid;
   justify-items: end;
@@ -1316,7 +1343,7 @@ body {
 .password-row button {
   border: 0;
   background: var(--brand);
-  color: #1d1d1f;
+  color: #fff;
   font-weight: 800;
   padding: 0 18px;
   cursor: pointer;
@@ -1445,7 +1472,7 @@ body {
 
   .qr-panel {
     right: 12px;
-    bottom: 112px;
+    bottom: 132px;
   }
 
   .qr-card {

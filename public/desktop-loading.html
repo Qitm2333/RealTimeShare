@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Torras Live Interaction</title>
+    <style>
+      @font-face { font-family: "FT Terra"; src: url("./assets/fonts/FTTerra-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+      @font-face { font-family: "FT Terra"; src: url("./assets/fonts/FTTerra-Medium.ttf") format("truetype"); font-weight: 500; font-style: normal; font-display: swap; }
+      * { box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; margin: 0; background: transparent; color: #1d1d1f; font-family: "FT Terra", "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif; }
+      body { padding: 8px; overflow: hidden; }
+      .window-frame { position: relative; display: grid; width: 100%; height: 100%; place-items: center; overflow: hidden; border: 1px solid rgba(32, 33, 36, .12); border-radius: 12px; background: #fff; box-shadow: 0 16px 42px rgba(0, 0, 0, .18); -webkit-app-region: drag; }
+      .window-controls { position: absolute; top: 18px; right: 18px; display: flex; gap: 4px; -webkit-app-region: no-drag; }
+      .window-controls button { display: grid; width: 30px; height: 30px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #73757a; font: inherit; font-size: 18px; line-height: 1; cursor: pointer; }
+      .window-controls button:hover { background: #f1f2f4; color: #202124; }
+      .window-controls .window-close:hover { background: #d92d20; color: #fff; }
+      main { display: grid; justify-items: center; gap: 22px; }
+      h1 { display: flex; align-items: center; gap: 14px; margin: 0; color: #1d1d1f; font-size: 19px; font-weight: 500; letter-spacing: 0; }
+      h1 img { display: block; width: 158px; height: auto; }
+      .loading { display: flex; align-items: center; gap: 9px; color: #767676; font-size: 12px; }
+      .spinner { width: 15px; height: 15px; border: 2px solid #ececef; border-top-color: #ff5b00; border-radius: 50%; animation: spin 700ms linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <div class="window-frame">
+      <div class="window-controls" aria-label="窗口控制">
+        <button id="minimizeWindow" type="button" title="最小化" aria-label="最小化">−</button>
+        <button id="closeWindow" class="window-close" type="button" title="关闭" aria-label="关闭">×</button>
+      </div>
+      <main>
+        <h1><img src="./assets/brand/torras-logo-orange.png?v=20260917-1" alt="TORRAS" /><span>现场互动</span></h1>
+        <div class="loading"><span class="spinner" aria-hidden="true"></span><span>正在启动</span></div>
+      </main>
+    </div>
+    <script>
+      document.getElementById('minimizeWindow').addEventListener('click', () => window.desktopOverlay?.minimize());
+      document.getElementById('closeWindow').addEventListener('click', () => window.desktopOverlay?.quit());
+    </script>
+  </body>
+</html>

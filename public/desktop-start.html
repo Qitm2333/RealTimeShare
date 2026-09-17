@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Torras Live Interaction</title>
+    <link rel="stylesheet" href="/css/desktop-start.css?v=20260917-4" />
+  </head>
+  <body>
+    <div class="window-frame">
+      <main class="desktop-start">
+        <header class="start-header">
+          <h1 class="brand-title">
+            <img src="/assets/brand/torras-logo-orange.png?v=20260917-1" alt="TORRAS" />
+            <span>现场互动</span>
+          </h1>
+          <div class="window-controls" aria-label="窗口控制">
+            <button id="minimizeWindow" type="button" title="最小化" aria-label="最小化">−</button>
+            <button id="closeWindow" class="window-close" type="button" title="关闭" aria-label="关闭">×</button>
+          </div>
+        </header>
+
+        <section class="start-section" aria-labelledby="displayTitle">
+        <div class="section-heading">
+          <h2 id="displayTitle">演示屏幕</h2>
+          <button id="refreshDisplays" class="icon-button" type="button" title="刷新显示器" aria-label="刷新显示器">↻</button>
+        </div>
+        <div id="displayGrid" class="display-grid" role="radiogroup" aria-label="可用显示器"></div>
+        </section>
+
+        <form id="startForm" class="start-form">
+        <div class="start-action-row">
+          <input id="passwordInput" type="password" autocomplete="current-password" placeholder="输入密码" aria-label="演讲密码" required autofocus />
+          <button id="startButton" class="primary-button" type="submit">开始互动</button>
+        </div>
+        <p id="startError" class="start-error" hidden></p>
+        </form>
+
+        <footer class="start-footer">Made by 产品中心 · v1.0.0</footer>
+      </main>
+    </div>
+    <script src="/js/desktop-start.js?v=20260917-4"></script>
+  </body>
+</html>

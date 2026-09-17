@@ -1,0 +1,192 @@
+html[data-desktop-view],
+html[data-desktop-view] body,
+html[data-desktop-view] .stage {
+  background: transparent;
+}
+
+html[data-desktop-view] body {
+  user-select: none;
+}
+
+html[data-desktop-view] .password-dialog {
+  display: none !important;
+}
+
+html[data-desktop-view="overlay"] .pdf-shell,
+html[data-desktop-view="overlay"] .qr-panel,
+html[data-desktop-view="overlay"] .tools-dialog,
+html[data-desktop-view="overlay"] .presenter-bar > div:first-child {
+  display: none !important;
+}
+
+html[data-desktop-view="overlay"] .presenter-bar {
+  display: none !important;
+}
+
+html[data-desktop-view="overlay"] .scoreboard {
+  top: 24px;
+}
+
+html[data-desktop-view="overlay"] .combo-badge {
+  top: 90px;
+}
+
+html[data-desktop-view="overlay"][data-toolbar-visible="true"] .stage.is-presentation-fullscreen.is-ui-hidden .scoreboard,
+html[data-desktop-view="overlay"][data-toolbar-visible="true"] .scoreboard {
+  top: 88px;
+}
+
+html[data-desktop-view="overlay"][data-toolbar-visible="true"] .stage.is-presentation-fullscreen.is-ui-hidden .combo-badge,
+html[data-desktop-view="overlay"][data-toolbar-visible="true"] .combo-badge {
+  top: 154px;
+}
+
+html[data-desktop-view="toolbar"] .stage,
+html[data-desktop-view="toolbar"] .pdf-shell {
+  position: static;
+  width: 100%;
+  height: auto;
+  background: transparent;
+}
+
+html[data-desktop-view="toolbar"] .pdf-toolbar {
+  min-height: 64px;
+  max-height: none;
+  border: 1px solid rgba(210, 210, 215, 0.9);
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
+}
+
+html[data-desktop-view="toolbar"] .pdf-status,
+html[data-desktop-view="toolbar"] .pdf-reader-actions,
+html[data-desktop-view="toolbar"] .pdf-viewport,
+html[data-desktop-view="toolbar"] .danmu-layer,
+html[data-desktop-view="toolbar"] .effect-layer,
+html[data-desktop-view="toolbar"] .scoreboard,
+html[data-desktop-view="toolbar"] .combo-badge,
+html[data-desktop-view="toolbar"] .presenter-lottery-dialog,
+html[data-desktop-view="toolbar"] .presenter-bar,
+html[data-desktop-view="toolbar"] .qr-panel {
+  display: none !important;
+}
+
+html[data-desktop-view="toolbar"] .pdf-file-actions {
+  display: flex;
+}
+
+html[data-desktop-view="toolbar"] #audienceModeToggle {
+  display: none !important;
+}
+
+html[data-desktop-view="toolbar"] .pdf-upload-progress {
+  flex: 0 1 220px;
+}
+
+html[data-desktop-view="toolbar"] .desktop-stop {
+  display: inline-flex !important;
+  align-items: center;
+  min-height: 34px;
+  margin-left: auto;
+  padding: 0 13px;
+  border: 1px solid #d92d20;
+  border-radius: 7px;
+  background: #fff;
+  color: #b42318;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+html[data-desktop-view="toolbar"] .tools-dialog {
+  z-index: 40;
+  padding: 24px;
+  place-items: center;
+}
+
+html[data-desktop-view="qr"] .pdf-shell,
+html[data-desktop-view="qr"] .danmu-layer,
+html[data-desktop-view="qr"] .effect-layer,
+html[data-desktop-view="qr"] .scoreboard,
+html[data-desktop-view="qr"] .combo-badge,
+html[data-desktop-view="qr"] .presenter-lottery-dialog,
+html[data-desktop-view="qr"] .presenter-bar,
+html[data-desktop-view="qr"] .tools-dialog {
+  display: none !important;
+}
+
+html[data-desktop-view="qr"] .qr-panel {
+  position: static;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  align-content: end;
+  justify-items: end;
+}
+
+html[data-desktop-view="qr"] .qr-toggle {
+  min-width: 140px;
+  min-height: 46px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
+}
+
+html[data-desktop-view="qr"] .qr-card {
+  width: 184px;
+  height: 184px;
+  max-width: 184px;
+  overflow: hidden;
+  margin: 0;
+  padding: 10px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
+}
+
+html[data-desktop-view="qr"] .qr-card:hover,
+html[data-desktop-view="qr"] .qr-card:focus-within {
+  width: 184px;
+}
+
+html[data-desktop-view="qr"][data-qr-editing="true"] .qr-card,
+html[data-desktop-view="qr"][data-qr-editing="true"] .qr-card:hover,
+html[data-desktop-view="qr"][data-qr-editing="true"] .qr-card:focus-within {
+  width: 360px;
+  height: 360px;
+  max-width: 360px;
+  padding: 12px;
+}
+
+html[data-desktop-view="qr"] .qr-image {
+  width: 164px;
+  height: 164px;
+}
+
+html[data-desktop-view="qr"][data-qr-editing="true"] .qr-image {
+  width: 180px;
+  height: 180px;
+}
+
+html[data-desktop-view="qr"] .qr-field {
+  display: none !important;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  gap: 4px;
+}
+
+html[data-desktop-view="qr"] .qr-actions {
+  display: none !important;
+}
+
+html[data-desktop-view="qr"] .qr-hint {
+  display: none !important;
+  margin-top: 8px;
+  white-space: nowrap;
+}
+
+html[data-desktop-view="qr"][data-qr-editing="true"] .qr-field,
+html[data-desktop-view="qr"][data-qr-editing="true"] .qr-actions {
+  display: grid !important;
+}
+
+html[data-desktop-view="qr"][data-qr-editing="true"] .qr-hint {
+  display: block !important;
+}

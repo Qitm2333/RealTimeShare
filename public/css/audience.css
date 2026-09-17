@@ -1,15 +1,51 @@
+@font-face {
+  font-family: "FT Terra";
+  src: url("/assets/fonts/FTTerra-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "FT Terra";
+  src: url("/assets/fonts/FTTerra-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "FT Terra";
+  src: url("/assets/fonts/FTTerra-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "FT Terra";
+  src: url("/assets/fonts/FTTerra-ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
 }
 
 :root {
-  --brand: #ffbb3e;
-  --brand-strong: #a86100;
-  --brand-soft: #fff8e8;
-  --brand-ring: rgba(255, 187, 62, 0.24);
-  --page: #f7f3ef;
-  --surface: #fffdfb;
+  --brand: #ff5b00;
+  --brand-strong: #c74600;
+  --brand-soft: #fff1eb;
+  --brand-ring: rgba(255, 91, 0, 0.22);
+  --page: #f6f6f4;
+  --surface: #fff;
   --ink: #1d1d1f;
+}
+
+.download-button {
+  display: none !important;
 }
 
 .poll-dialog,
@@ -25,13 +61,12 @@
 
 .lottery-winner-dialog { position:fixed; inset:0; z-index:40; display:grid; place-items:center; padding:20px; background:rgba(29,29,31,.42); }
 .lottery-winner-dialog[hidden] { display:none; }
-.lottery-winner-card { display:grid; justify-items:center; width:min(320px,100%); padding:26px 24px 22px; border:1px solid #e7e1d6; border-radius:14px; background:#fffefa; box-shadow:0 16px 38px rgba(29,29,31,.18); text-align:center; animation: winner-card-in 260ms ease-out both; }
-.lottery-winner-card h2 { margin:0; color:#242321; font-size:23px; letter-spacing:-.02em; }
+.lottery-winner-card { display:grid; justify-items:center; width:min(320px,100%); padding:26px 24px 22px; border:1px solid #e7e1d6; border-radius:14px; background:#fffefa; box-shadow:0 16px 38px rgba(29,29,31,.18); text-align:center; }
+.lottery-winner-card h2 { margin:0; color:#242321; font-size:23px; letter-spacing:0; }
 .lottery-winner-card strong { margin:14px 0 20px; color:#242321; font-size:20px; font-weight:800; }
 .lottery-winner-id { margin-top:-12px; margin-bottom:20px; color:#77736b; font-size:12px; letter-spacing:.08em; }
-.lottery-winner-ack { min-width:128px; padding:10px 18px; border:0; border-radius:9px; background:#ffbb3e; color:#4a3200; font-size:14px; font-weight:800; cursor:pointer; }
+.lottery-winner-ack { min-width:128px; padding:10px 18px; border:0; border-radius:9px; background:var(--brand); color:#fff; font-size:14px; font-weight:800; cursor:pointer; }
 .lottery-winner-ack:active { transform:translateY(1px); }
-@keyframes winner-card-in { from { opacity:0; transform:translateY(14px) scale(.94); } to { opacity:1; transform:translateY(0) scale(1); } }
 
 .poll-dialog {
   z-index: 20;
@@ -87,7 +122,7 @@
 
 #pollOptions button.is-selected {
   border-color: var(--brand);
-  background: rgba(255, 187, 62, 0.14);
+  background: rgba(255, 91, 0, 0.12);
   color: var(--brand-strong);
   font-weight: 700;
 }
@@ -125,7 +160,7 @@
   border: 0;
   border-radius: 8px;
   background: var(--brand);
-  color: #1d1d1f;
+  color: #fff;
   font: inherit;
   font-weight: 800;
   cursor: pointer;
@@ -277,7 +312,7 @@ body {
   background: var(--page);
   color: var(--ink);
   font-family:
-    Inter, "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    "FT Terra", "Microsoft YaHei UI", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 body {
@@ -302,7 +337,7 @@ a {
   min-height: 100vh;
   min-height: 100dvh;
   padding: 12px 18px calc(96px + env(safe-area-inset-bottom));
-  background: radial-gradient(circle at 100% 0, rgba(255, 187, 62, 0.1), transparent 34%);
+  background: var(--page);
 }
 
 .topbar {
@@ -316,16 +351,27 @@ a {
   margin-bottom: 10px;
   min-height: 48px;
   padding: 6px 0;
-  background: rgba(247, 243, 239, 0.92);
+  background: rgba(246, 246, 244, 0.94);
   backdrop-filter: blur(16px);
 }
 
 h1 {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
   margin: 0;
   color: var(--ink);
-  font-size: 23px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 500;
   letter-spacing: 0;
+}
+
+h1 img {
+  display: block;
+  width: 112px;
+  height: auto;
+  flex: 0 0 auto;
 }
 
 .reader-panel {
@@ -473,8 +519,8 @@ h1 {
 
 .nav-item.is-active {
   background: var(--brand);
-  color: #1d1d1f;
-  box-shadow: 0 4px 12px rgba(255, 187, 62, 0.24);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(255, 91, 0, 0.24);
 }
 
 .nav-item:disabled {
@@ -542,7 +588,7 @@ textarea {
 input:focus,
 textarea:focus {
   border-color: var(--brand);
-  box-shadow: 0 0 0 3px rgba(255, 187, 62, 0.18);
+  box-shadow: 0 0 0 3px rgba(255, 91, 0, 0.18);
 }
 
 .composer {
@@ -569,7 +615,7 @@ textarea:focus {
   border: 0;
   border-radius: 8px;
   background: var(--brand);
-  color: #1d1d1f;
+  color: #fff;
   font-weight: 700;
   cursor: pointer;
 }
@@ -603,8 +649,8 @@ textarea:focus {
 }
 
 .effect-button:not(:disabled):hover {
-  border-color: rgba(255, 187, 62, 0.6);
-  box-shadow: 0 5px 14px rgba(255, 187, 62, 0.16);
+  border-color: rgba(255, 91, 0, 0.56);
+  box-shadow: 0 5px 14px rgba(255, 91, 0, 0.16);
   transform: translateY(-1px);
 }
 
@@ -673,8 +719,8 @@ textarea:focus {
 }
 
 .quick-phrase-button:not(:disabled):hover {
-  border-color: rgba(255, 187, 62, 0.6);
-  box-shadow: 0 5px 14px rgba(255, 187, 62, 0.16);
+  border-color: rgba(255, 91, 0, 0.56);
+  box-shadow: 0 5px 14px rgba(255, 91, 0, 0.16);
 }
 
 .quick-phrase-button:focus-visible {
@@ -699,7 +745,12 @@ textarea:focus {
   }
 
   h1 {
-    font-size: 21px;
+    gap: 8px;
+    font-size: 17px;
+  }
+
+  h1 img {
+    width: 96px;
   }
 
   .brand-block {

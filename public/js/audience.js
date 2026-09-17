@@ -663,9 +663,6 @@
     randomNicknameRequested = false;
   });
   lotteryWinnerAck?.addEventListener('click', hideLotteryWinner);
-  lotteryWinnerDialog?.addEventListener('click', (event) => {
-    if (event.target === lotteryWinnerDialog) hideLotteryWinner();
-  });
 
   messageInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {

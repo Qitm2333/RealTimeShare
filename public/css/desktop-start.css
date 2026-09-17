@@ -1,0 +1,361 @@
+@font-face {
+  font-family: "FT Terra";
+  src: url("/assets/fonts/FTTerra-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "FT Terra";
+  src: url("/assets/fonts/FTTerra-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "FT Terra";
+  src: url("/assets/fonts/FTTerra-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: light;
+  --brand: #ff5b00;
+  --brand-strong: #c74600;
+  --brand-soft: #fff1eb;
+  --ink: #202124;
+  --muted: #73757a;
+  --line: #dedfe2;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  min-width: 600px;
+  min-height: 430px;
+  margin: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: "FT Terra", "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif;
+}
+
+body {
+  padding: 8px;
+  overflow: hidden;
+}
+
+.window-frame {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(32, 33, 36, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.18);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.desktop-start {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 24px;
+  width: min(680px, 100%);
+  height: 100%;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 30px 32px 20px;
+}
+
+.start-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+  -webkit-app-region: drag;
+}
+
+.window-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.window-controls button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #73757a;
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.window-controls button:hover {
+  background: #f1f2f4;
+  color: #202124;
+}
+
+.window-controls .window-close:hover {
+  background: #d92d20;
+  color: #fff;
+}
+
+.start-header h1 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.brand-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-title img {
+  display: block;
+  width: 150px;
+  height: auto;
+}
+
+.start-section {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.section-heading,
+.start-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.start-section h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.icon-button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 19px;
+  line-height: 1;
+}
+
+.icon-button:hover {
+  border-color: #b8bac0;
+  color: var(--ink);
+}
+
+.icon-button:focus-visible,
+.display-option:focus-visible,
+.start-action-row input:focus-visible,
+.primary-button:focus-visible {
+  outline: 3px solid rgba(255, 91, 0, 0.22);
+  outline-offset: 2px;
+}
+
+.display-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 10px;
+}
+
+.display-option {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 12px;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 74px;
+  padding: 10px 14px 10px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+}
+
+.display-option::after {
+  width: 10px;
+  height: 10px;
+  border: 1px solid #b8bac0;
+  border-radius: 50%;
+  content: "";
+}
+
+.display-option:hover {
+  border-color: #b8bac0;
+}
+
+.display-option.is-selected {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.display-option.is-selected::after {
+  border-color: var(--brand-strong);
+  background: var(--brand);
+  box-shadow: inset 0 0 0 2px #fff;
+}
+
+.display-preview {
+  display: grid;
+  width: 54px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid #404246;
+  border-radius: 4px;
+  background: #292a2d;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.display-meta {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.display-meta strong,
+.display-meta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.display-meta strong {
+  font-size: 13px;
+}
+
+.display-meta small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.display-empty {
+  display: grid;
+  min-height: 74px;
+  place-items: center;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.start-form {
+  display: grid;
+  gap: 8px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.start-action-row input {
+  min-width: 0;
+  min-height: 44px;
+  flex: 1;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  outline: none;
+}
+
+.start-action-row input::placeholder {
+  color: #9a9ca1;
+}
+
+.start-action-row input:focus {
+  border-color: var(--brand);
+}
+
+.primary-button {
+  min-width: 112px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--brand);
+  border-radius: 7px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 700;
+}
+
+.primary-button:hover:not(:disabled) {
+  border-color: #e55200;
+  background: #e55200;
+  color: #fff;
+}
+
+.primary-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.start-error {
+  min-height: 17px;
+  margin: 0;
+  color: #b3261e;
+  font-size: 12px;
+}
+
+.start-error[hidden] {
+  display: block;
+  visibility: hidden;
+}
+
+.start-footer {
+  color: #9a9ca1;
+  font-size: 11px;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  html,
+  body {
+    min-width: 0;
+  }
+
+  .desktop-start {
+    padding: 24px 20px 18px;
+  }
+}

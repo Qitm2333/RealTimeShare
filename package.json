@@ -3,15 +3,63 @@
   "version": "1.0.0",
   "private": true,
   "description": "LAN live interaction sharing system for presenter slides and audience messages.",
-  "main": "server.js",
+  "main": "electron/main.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "desktop": "electron .",
+    "desktop:build": "electron-builder --win",
+    "desktop:portable": "electron-builder --win portable"
   },
   "dependencies": {
     "express": "^4.18.3",
-    "pdfjs-dist": "^6.3.289",
     "qrcode": "^1.5.4",
     "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "electron": "^39.8.7",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.torras.realtime-share",
+    "productName": "Torras Live Interaction",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "public/**/*",
+      "!public/downloads{,/**/*}",
+      "config/**/*",
+      "server.js",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "artifactName": "${productName}-${version}-setup-${arch}.${ext}",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable-${arch}.${ext}",
+      "splashImage": "build/portable-splash.bmp",
+      "useZip": true
+    }
   }
 }

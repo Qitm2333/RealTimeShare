@@ -4,14 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Torras 极致开放麦互动系统 - 演讲端</title>
-    <link rel="stylesheet" href="/css/presenter.css?v=20260916-3" />
+    <script>
+      (function () {
+        const view = new URLSearchParams(location.search).get('desktop');
+        if (view) document.documentElement.dataset.desktopView = view;
+      })();
+    </script>
+    <link rel="stylesheet" href="/css/presenter.css?v=20260917-5" />
+    <link rel="stylesheet" href="/css/desktop-presenter.css?v=20260917-4" />
   </head>
   <body>
     <main class="stage">
       <section class="pdf-shell" aria-label="PDF 演示内容">
         <div class="pdf-toolbar">
           <div class="pdf-file-actions">
-            <label id="pdfFileButton" class="file-button" for="pdfInput">上传 PDF</label>
+            <label id="pdfFileButton" class="file-button" for="pdfInput">上传课件</label>
             <input id="pdfInput" class="visually-hidden" type="file" accept="application/pdf,.pdf" />
             <button id="sessionReset" class="secondary-button reset-button" type="button" title="移除 PDF 并清空本场数据">重置现场</button>
           </div>
@@ -22,10 +29,10 @@
           </div>
           <button id="pollToggle" class="secondary-button" type="button" aria-haspopup="dialog" aria-expanded="false">投票</button>
           <button id="giftToggle" class="gift-toggle is-on" type="button" aria-pressed="true">礼物开</button>
-          <div class="audience-mode-panel" aria-label="观众 PDF 权限">
-            <span>观众权限</span>
-            <button id="audienceReadToggle" type="button" aria-pressed="true">阅读</button>
-            <button id="audienceModeToggle" type="button" aria-pressed="false">下载</button>
+          <div class="audience-mode-panel" aria-label="观众 PDF 阅读权限">
+            <span>观众阅读</span>
+            <button id="audienceReadToggle" type="button" aria-pressed="true">已开启</button>
+            <button id="audienceModeToggle" type="button" aria-pressed="false" hidden>下载</button>
           </div>
           <div class="pdf-reader-actions" aria-label="PDF 阅读控制">
             <button id="pdfPrevious" type="button" aria-label="上一页">‹</button>
@@ -34,6 +41,7 @@
             <button id="pdfFitWidth" class="fit-button" type="button">适应宽度</button>
             <button id="pdfFitPage" class="fit-button" type="button">整页显示</button>
           </div>
+          <button id="desktopStop" class="desktop-stop" type="button" hidden>结束互动</button>
         </div>
         <div id="pdfViewport" class="pdf-viewport">
           <canvas id="pdfCanvas" class="pdf-canvas" hidden></canvas>
@@ -66,6 +74,7 @@
       <div id="comboBadge" class="combo-badge" hidden>互动爆发</div>
       <section id="presenterLotteryDialog" class="presenter-lottery-dialog" role="dialog" aria-modal="true" aria-hidden="true" hidden aria-labelledby="presenterLotteryTitle">
         <div class="presenter-lottery-card">
+          <button id="presenterLotteryClose" class="presenter-lottery-close" type="button" aria-label="关闭中奖提示">×</button>
           <h2 id="presenterLotteryTitle">恭喜，抽中啦</h2>
           <div id="presenterLotteryWinners" class="presenter-lottery-winners"></div>
           <button id="presenterLotteryAck" class="primary-button" type="button">知道了</button>
@@ -175,6 +184,6 @@
     </div>
 
     <script src="/js/pdf-reader.js?v=20260916-3"></script>
-    <script src="/js/presenter.js?v=20260916-4"></script>
+    <script src="/js/presenter.js?v=20260917-5"></script>
   </body>
 </html>

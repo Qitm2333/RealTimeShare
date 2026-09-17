@@ -1,4 +1,5 @@
 (function () {
+  const desktopView = new URLSearchParams(location.search).get('desktop') || '';
   const pdfInput = document.getElementById('pdfInput');
   const pdfFileButton = document.getElementById('pdfFileButton');
   const sessionReset = document.getElementById('sessionReset');
@@ -86,6 +87,8 @@
   const presenterLotteryDialog = document.getElementById('presenterLotteryDialog');
   const presenterLotteryWinners = document.getElementById('presenterLotteryWinners');
   const presenterLotteryAck = document.getElementById('presenterLotteryAck');
+  const presenterLotteryClose = document.getElementById('presenterLotteryClose');
+  const desktopStop = document.getElementById('desktopStop');
   let activePoll;
   let selectedPreset = 0;
   let pollPresetsData = [];
@@ -100,6 +103,7 @@
   let lotteryResultData = null;
   let toolsPreviousFocus = null;
   let toolsQrWasExpanded = false;
+  let qrHoverArmed = true;
   let pollLaunchPending = false;
   let pollEditing = false;
   let lotterySelectedCount = 1;
@@ -108,7 +112,7 @@
   let lotteryRollStartedAt = 0;
   let lotteryRollFinishTimer = 0;
   let lotteryRollSequence = 0;
-  const lotteryRollMinDuration = 1800;
+  const lotteryRollMinDuration = 2400;
 
   function setLotteryDrawLabel(label) {
     const text = lotteryDraw.querySelector('span:last-child');
@@ -328,12 +332,16 @@
     });
     presenterLotteryDialog.hidden = false;
     presenterLotteryDialog.setAttribute('aria-hidden', 'false');
+    if (desktopView === 'overlay') {
+      window.desktopOverlay?.setLotteryVisible(true);
+    }
   }
 
   function hidePresenterLotteryWinner() {
     if (!presenterLotteryDialog) return;
     presenterLotteryDialog.hidden = true;
     presenterLotteryDialog.setAttribute('aria-hidden', 'true');
+    if (desktopView === 'overlay') window.desktopOverlay?.setLotteryVisible(false);
   }
 
   function stopLotteryRoll() {
@@ -346,16 +354,20 @@
     lotteryRoller.hidden = true;
   }
 
-  function startLotteryRoll() {
+  function startLotteryRoll(startedAt = Date.now()) {
+    window.clearInterval(lotteryRollTimer);
+    window.clearTimeout(lotteryRollFinishTimer);
+    lotteryRollTimer = 0;
+    lotteryRollFinishTimer = 0;
+    lotteryRollStartedAt = Number.isFinite(Number(startedAt)) ? Number(startedAt) : Date.now();
+    lotteryRollSequence += 1;
+    if (desktopView === 'overlay') return;
     const ranking = Array.isArray(latestRankingStats.ranking) ? latestRankingStats.ranking : [];
     lotteryRollNames = ranking.map((user) => formatUserLabel(user)).filter(Boolean);
     if (!lotteryRollNames.length) lotteryRollNames = ['美味的烧鸡', '巧克力味的西瓜', '冰凉的月亮'];
     lotteryRoller.hidden = false;
-    lotteryRollStartedAt = Date.now();
-    lotteryRollSequence += 1;
     let index = Math.floor(Math.random() * lotteryRollNames.length);
     lotteryRollerName.textContent = lotteryRollNames[index];
-    window.clearInterval(lotteryRollTimer);
     lotteryRollTimer = window.setInterval(() => {
       index = (index + 1 + Math.floor(Math.random() * Math.max(1, lotteryRollNames.length - 1))) % lotteryRollNames.length;
       lotteryRollerName.textContent = lotteryRollNames[index];
@@ -612,6 +624,7 @@
 
   function setToolsOpen(expanded) {
     const next = Boolean(expanded);
+    if (desktopView === 'toolbar') window.desktopOverlay?.setToolsOpen(next);
     if (next === !pollPanel.hidden) {
       return;
     }
@@ -778,10 +791,10 @@
     documentInfo = nextDocument || { available: false };
     if (typeof documentInfo.audienceMode === 'string') setAudienceMode(documentInfo.audienceMode);
     if (typeof documentInfo.audienceReadingEnabled === 'boolean') setAudienceReadingEnabled(documentInfo.audienceReadingEnabled);
-    if (pdfFileButton) pdfFileButton.textContent = documentInfo.available ? '替换 PDF' : '上传 PDF';
+    if (pdfFileButton) pdfFileButton.textContent = documentInfo.available ? '替换课件' : '上传课件';
     pdfStatus.textContent = documentInfo.available ? '已就绪' : '未打开';
 
-    if (!documentInfo.available) {
+    if (!documentInfo.available || desktopView) {
       pdfReader.clear();
       return;
     }
@@ -948,9 +961,22 @@
     }
   }
 
+  function setQrEditing(editing) {
+    if (desktopView !== 'qr') return;
+    const next = Boolean(editing) && !qrCard.hidden;
+    document.documentElement.dataset.qrEditing = String(next);
+    window.desktopOverlay?.setQrEditing(next);
+  }
+
   function setQrExpanded(expanded) {
     qrCard.hidden = !expanded;
+    qrToggle.hidden = expanded;
     qrToggle.setAttribute('aria-expanded', String(expanded));
+    if (desktopView === 'qr') {
+      qrHoverArmed = !expanded;
+      document.documentElement.dataset.qrEditing = 'false';
+      window.desktopOverlay?.setQrExpanded(expanded);
+    }
 
     if (expanded && !qrUrlInput.value) {
       loadAudienceUrls();
@@ -996,17 +1022,19 @@
     const item = document.createElement('div');
     const image = document.createElement('img');
     const track = chooseTrack();
+    const layerHeight = danmuLayer.clientHeight;
+    const trackHeight = Math.max(46, Math.floor(layerHeight / trackCount));
+    const top = Math.min(layerHeight - 46, track * trackHeight + 8);
 
     item.className = 'quick-danmu';
-    item.style.left = `calc(100% - 150px - ${Math.round(Math.random() * 6)}vw)`;
-    item.style.top = `${8 + track * 13 + Math.random() * 3}vh`;
-    item.style.animationDuration = `${6.2 + Math.random() * 1.4}s`;
+    item.style.top = `${top}px`;
+    item.style.animationDuration = `${8 + Math.random() * 2.5}s`;
     image.src = phrase.image;
     image.alt = phrase.text;
     item.appendChild(image);
-    effectLayer.appendChild(item);
+    danmuLayer.appendChild(item);
     item.addEventListener('animationend', () => item.remove(), { once: true });
-    window.setTimeout(() => item.remove(), 8500);
+    window.setTimeout(() => item.remove(), 11000);
     toast.textContent = phrase.text;
   }
 
@@ -1296,6 +1324,7 @@
 
   function setAudienceReadingEnabled(enabled) {
     audienceReadingEnabled = Boolean(enabled);
+    audienceReadToggle.textContent = audienceReadingEnabled ? '已开启' : '已关闭';
     audienceReadToggle.classList.toggle('is-enabled', audienceReadingEnabled);
     audienceReadToggle.setAttribute('aria-pressed', String(audienceReadingEnabled));
     audienceReadToggle.title = audienceReadingEnabled ? '观众可以阅读 PDF' : '观众无法阅读 PDF';
@@ -1387,15 +1416,15 @@
         return;
       }
 
-      if (message.type === 'danmu') {
+      if (message.type === 'danmu' && (!desktopView || desktopView === 'overlay')) {
         addDanmu(message);
       }
 
-      if (message.type === 'quick-danmu') {
+      if (message.type === 'quick-danmu' && (!desktopView || desktopView === 'overlay')) {
         addQuickDanmu(message);
       }
 
-      if (message.type === 'effect') {
+      if (message.type === 'effect' && (!desktopView || desktopView === 'overlay')) {
         addEffect(message);
       }
 
@@ -1445,11 +1474,18 @@
         renderPoll(null);
       }
 
-      if (message.type === 'lottery-result') {
+      if (message.type === 'lottery-start' && desktopView !== 'qr') {
+        startLotteryRoll(message.startedAt);
+        setLotteryControlsEnabled(false);
+        setLotteryDrawLabel('抽奖中…');
+      }
+
+      if (message.type === 'lottery-result' && desktopView !== 'qr') {
+        if (!lotteryRollStartedAt) startLotteryRoll(message.startedAt);
         finishLotteryRoll(() => {
           stopLotteryRoll();
           renderLotteryResult(message.result);
-          showPresenterLotteryWinner(message.result);
+          if (!desktopView || desktopView === 'overlay') showPresenterLotteryWinner(message.result);
           setToolTab('lottery');
           const winners = Array.isArray(message.result?.winners) ? message.result.winners : [];
           toast.textContent = winners.length ? winners.map(formatUserLabel).join('、') + ' 中奖' : '抽奖完成';
@@ -1603,7 +1639,6 @@
     if (!websocket || websocket.readyState !== WebSocket.OPEN) { toast.textContent = '互动服务未连接'; return; }
     setLotteryControlsEnabled(false);
     setLotteryDrawLabel('抽奖中…');
-    startLotteryRoll();
     websocket.send(JSON.stringify({ type: 'lottery-draw', count: lotterySelectedCount, excludePrevious: true }));
   });
   lotteryCountOptions.addEventListener('click', (event) => {
@@ -1612,15 +1647,34 @@
     setLotteryCount(button.dataset.lotteryCount);
   });
   presenterLotteryAck?.addEventListener('click', hidePresenterLotteryWinner);
-  presenterLotteryDialog?.addEventListener('click', (event) => {
-    if (event.target === presenterLotteryDialog) hidePresenterLotteryWinner();
-  });
+  presenterLotteryClose?.addEventListener('click', hidePresenterLotteryWinner);
   setLotteryCount(1);
   sessionReset.addEventListener('click', resetSession);
   audienceReadToggle.addEventListener('click', toggleAudienceReading);
   audienceModeToggle.addEventListener('click', toggleAudienceMode);
   qrToggle.addEventListener('click', () => setQrExpanded(qrCard.hidden));
   qrClose.addEventListener('click', () => setQrExpanded(false));
+  qrCard.addEventListener('pointerenter', () => {
+    if (qrHoverArmed) setQrEditing(true);
+  });
+  qrCard.addEventListener('pointerleave', () => {
+    qrHoverArmed = true;
+    if (!qrCard.contains(document.activeElement)) setQrEditing(false);
+  });
+  qrCard.addEventListener('pointerdown', () => {
+    qrHoverArmed = true;
+    setQrEditing(true);
+  });
+  qrCard.addEventListener('focusin', () => setQrEditing(true));
+  qrCard.addEventListener('focusout', () => {
+    window.requestAnimationFrame(() => {
+      if (!qrCard.contains(document.activeElement)) setQrEditing(false);
+    });
+  });
+  window.addEventListener('blur', () => {
+    qrHoverArmed = true;
+    setQrEditing(false);
+  });
   qrUrlSelect.addEventListener('change', () => renderQrCode(qrUrlSelect.value));
   qrUrlInput.addEventListener('input', () => renderQrCode(qrUrlInput.value));
   qrSave.addEventListener('click', () => {
@@ -1634,10 +1688,29 @@
     setQrHint('二维码生成失败，请检查地址后重试。', 'is-warning');
   });
   giftToggle.addEventListener('click', () => setGiftEffectsEnabled(!giftEffectsEnabled));
+  desktopStop?.addEventListener('click', () => window.desktopOverlay?.stop());
+  window.addEventListener('storage', (event) => {
+    if (event.key === giftEffectsEnabledKey) setGiftEffectsEnabled(event.newValue !== 'false');
+  });
   setGiftEffectsEnabled(giftEffectsEnabled);
   setAudienceReadingEnabled(audienceReadingEnabled);
   setAudienceMode(audienceMode);
   revealFullscreenUi();
+
+  if (desktopView === 'overlay' && window.desktopOverlay?.onToolbarVisibility) {
+    window.desktopOverlay.onToolbarVisibility((visible) => {
+      document.documentElement.dataset.toolbarVisible = visible ? 'true' : 'false';
+    });
+  }
+
+  if (desktopView === 'toolbar' && window.desktopOverlay && window.ResizeObserver) {
+    const toolbar = document.querySelector('.pdf-toolbar');
+    const reportToolbarHeight = () => {
+      if (toolbar) window.desktopOverlay.setToolbarHeight(toolbar.getBoundingClientRect().height);
+    };
+    new ResizeObserver(reportToolbarHeight).observe(toolbar);
+    window.requestAnimationFrame(reportToolbarHeight);
+  }
 
   Promise.all([checkSession(), loadGifts(), loadQuickPhrases()]).then(async ([authenticated]) => {
     if (authenticated) {
