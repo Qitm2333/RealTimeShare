@@ -2,14 +2,16 @@
   "name": "live-interaction-share",
   "version": "1.0.0",
   "private": true,
-  "description": "LAN live interaction sharing system for presenter slides and audience messages.",
+  "description": "TORRAS live interaction desktop overlay with audience messaging, gifts, polls and lotteries.",
   "main": "electron/main.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
     "desktop": "electron .",
+    "check": "node --check server.js && node --check electron/main.js && node --check electron/preload.js && node --check public/js/presenter.js && node --check public/js/audience.js && node --check public/js/desktop-start.js",
     "desktop:build": "electron-builder --win",
-    "desktop:portable": "electron-builder --win portable"
+    "desktop:portable": "electron-builder --win portable",
+    "desktop:mac": "electron-builder --mac zip --arm64 --publish never"
   },
   "dependencies": {
     "express": "^4.18.3",
@@ -47,6 +49,20 @@
           "arch": ["x64"]
         }
       ]
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": ["arm64"]
+        }
+      ],
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
+      "category": "public.app-category.productivity",
+      "minimumSystemVersion": "12.0",
+      "extendInfo": {
+        "NSLocalNetworkUsageDescription": "用于连接同一局域网内的观众设备并提供现场互动。"
+      }
     },
     "nsis": {
       "artifactName": "${productName}-${version}-setup-${arch}.${ext}",

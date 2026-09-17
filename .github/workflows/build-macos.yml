@@ -1,0 +1,51 @@
+name: Build macOS
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-apple-silicon:
+    name: Apple Silicon (arm64)
+    runs-on: macos-14
+    timeout-minutes: 30
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate source
+        run: npm run check
+
+      - name: Build macOS ZIP
+        run: npm run desktop:mac
+
+      - name: Create checksum
+        working-directory: release
+        run: shasum -a 256 *.zip > SHA256SUMS.txt
+
+      - name: Upload test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: torras-live-interaction-macos-arm64
+          path: |
+            release/*.zip
+            release/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
