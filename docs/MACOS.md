@@ -2,7 +2,7 @@
 
 ## 当前范围
 
-GitHub Actions 生成 Apple Silicon `arm64` 的未签名 ZIP，适用于 M1 及后续 Apple 芯片 Mac。该产物用于验证功能，不是可公开分发的正式安装包。
+GitHub Actions 生成 Apple Silicon `arm64` ZIP，适用于 M1 及后续 Apple 芯片 Mac。应用使用 ad-hoc 临时签名，但未进行 Apple Developer 签名和公证；该产物用于验证功能，不是可公开分发的正式安装包。
 
 最低目标系统版本为 macOS 12。
 
@@ -17,7 +17,7 @@ GitHub Actions 生成 Apple Silicon `arm64` 的未签名 ZIP，适用于 M1 及�
 
 ## 首次打开
 
-因为测试包尚未签名和公证，macOS 可能阻止直接双击运行。优先使用下面的方式：
+因为测试包尚未进行 Apple Developer 签名和公证，macOS 可能阻止直接双击运行。优先使用下面的方式：
 
 1. 将 App 移动到“应用程序”。
 2. 在 Finder 中右键 App，选择“打开”。

@@ -36,6 +36,21 @@ jobs:
       - name: Build macOS ZIP
         run: npm run desktop:mac
 
+      - name: Verify macOS app
+        run: |
+          ZIP_PATH="$(find release -maxdepth 1 -type f -name '*.zip' -print -quit)"
+          VERIFY_DIR="$(mktemp -d)"
+          trap 'rm -rf "$VERIFY_DIR"' EXIT
+          test -n "$ZIP_PATH"
+          ditto -x -k "$ZIP_PATH" "$VERIFY_DIR"
+          APP_PATH="$VERIFY_DIR/Torras Live Interaction.app"
+          EXECUTABLE_PATH="$APP_PATH/Contents/MacOS/Torras Live Interaction"
+          test -d "$APP_PATH"
+          test -x "$EXECUTABLE_PATH"
+          file "$EXECUTABLE_PATH" | tee /dev/stderr | grep -q "arm64"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          codesign --display --verbose=2 "$APP_PATH"
+
       - name: Create checksum
         working-directory: release
         run: shasum -a 256 *.zip > SHA256SUMS.txt
@@ -61,7 +76,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "macOS Test Build #${GITHUB_RUN_NUMBER}" \
-            --notes "Unsigned Apple Silicon test build. See docs/MACOS.md before opening." \
+            --notes "Ad-hoc signed Apple Silicon test build. It is not notarized; see docs/MACOS.md before opening." \
             --prerelease
           RELEASE_URL="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url --jq .url)"
           echo "### macOS test release" >> "$GITHUB_STEP_SUMMARY"
