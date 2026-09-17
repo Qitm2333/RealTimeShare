@@ -7,7 +7,7 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-apple-silicon:
@@ -49,3 +49,20 @@ jobs:
             release/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish test release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: macos-test-${{ github.run_number }}-${{ github.run_attempt }}
+        run: |
+          gh release create "$RELEASE_TAG" \
+            release/*.zip \
+            release/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "macOS Test Build #${GITHUB_RUN_NUMBER}" \
+            --notes "Unsigned Apple Silicon test build. See docs/MACOS.md before opening." \
+            --prerelease
+          RELEASE_URL="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url --jq .url)"
+          echo "### macOS test release" >> "$GITHUB_STEP_SUMMARY"
+          echo "[$RELEASE_URL]($RELEASE_URL)" >> "$GITHUB_STEP_SUMMARY"

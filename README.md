@@ -40,11 +40,12 @@ Windows 便携包会输出到 `release/`。构建产物不会提交到 Git。
 
 macOS 包必须在 macOS 环境中构建。本项目使用 GitHub Actions 生成 Apple Silicon `arm64` ZIP：
 
-1. 打开仓库的 **Actions** 页面。
-2. 选择 **Build macOS**。
-3. 点击 **Run workflow**。
-4. 构建完成后，在运行详情底部下载 `torras-live-interaction-macos-arm64`。
-5. 解压后得到 `Torras Live Interaction.app`。
+1. 打开仓库的 **Releases** 页面。
+2. 打开最新的 **macOS Test Build** 预发布版本。
+3. 下载 `Torras Live Interaction-1.0.0-mac-arm64.zip`。
+4. 同时下载 `SHA256SUMS.txt`，核对文件完整性后解压，即可得到 `Torras Live Interaction.app`。
+
+每次手动运行 **Build macOS** workflow 后都会生成一个新的预发布版本。Actions 运行详情中的 `torras-live-interaction-macos-arm64` Artifact 仍会保留 14 天，仅作为开发备用下载。
 
 当前 Actions 产物未进行 Apple Developer 签名和公证，只用于内部测试。首次打开方式和验证清单见 [macOS 测试说明](docs/MACOS.md)。
 

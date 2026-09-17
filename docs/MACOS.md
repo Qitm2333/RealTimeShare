@@ -8,12 +8,12 @@ GitHub Actions 生成 Apple Silicon `arm64` 的未签名 ZIP，适用于 M1 及�
 
 ## 获取测试包
 
-1. 进入 GitHub 仓库的 **Actions** 页面。
-2. 打开 **Build macOS** 工作流。
-3. 点击 **Run workflow**，选择 `master` 分支并确认。
-4. 等待构建任务完成。
-5. 在任务详情的 **Artifacts** 区域下载 `torras-live-interaction-macos-arm64`。
-6. 解压 ZIP，得到 `Torras Live Interaction.app` 和 `SHA256SUMS.txt`。
+1. 进入 GitHub 仓库的 **Releases** 页面。
+2. 打开最新的 **macOS Test Build** 预发布版本。
+3. 下载 `Torras Live Interaction-1.0.0-mac-arm64.zip` 和 `SHA256SUMS.txt`。
+4. 核对 SHA-256 后解压 ZIP，得到 `Torras Live Interaction.app`。
+
+需要生成新测试包时，进入 **Actions** 页面，打开 **Build macOS**，点击 **Run workflow** 并选择 `master` 分支。构建成功后会自动创建新的预发布版本；运行详情中的 `torras-live-interaction-macos-arm64` Artifact 仍保留 14 天，供开发排查时备用。
 
 ## 首次打开
 
