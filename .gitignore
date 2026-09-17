@@ -9,6 +9,7 @@ tmp/
 .tmp-permissions/
 
 # Runtime state created by the local interaction server
+data/current.pdf
 data/users.json
 data/interaction-state.json
 data/lottery-history.json
