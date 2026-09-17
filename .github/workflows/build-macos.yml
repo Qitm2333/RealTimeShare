@@ -36,6 +36,17 @@ jobs:
       - name: Build macOS ZIP
         run: npm run desktop:mac
 
+      - name: Add first-launch helper
+        run: |
+          ZIP_PATH="$(find release -maxdepth 1 -type f -name '*.zip' -print -quit)"
+          STAGE_DIR="$(mktemp -d)"
+          trap 'rm -rf "$STAGE_DIR"' EXIT
+          test -n "$ZIP_PATH"
+          ditto -x -k "$ZIP_PATH" "$STAGE_DIR"
+          install -m 755 build/open-macos.command "$STAGE_DIR/首次打开 Torras.command"
+          rm "$ZIP_PATH"
+          ditto -c -k --sequesterRsrc "$STAGE_DIR" "$ZIP_PATH"
+
       - name: Verify macOS app
         run: |
           ZIP_PATH="$(find release -maxdepth 1 -type f -name '*.zip' -print -quit)"
@@ -45,8 +56,11 @@ jobs:
           ditto -x -k "$ZIP_PATH" "$VERIFY_DIR"
           APP_PATH="$VERIFY_DIR/Torras Live Interaction.app"
           EXECUTABLE_PATH="$APP_PATH/Contents/MacOS/Torras Live Interaction"
+          HELPER_PATH="$VERIFY_DIR/首次打开 Torras.command"
           test -d "$APP_PATH"
           test -x "$EXECUTABLE_PATH"
+          test -x "$HELPER_PATH"
+          /bin/bash -n "$HELPER_PATH"
           file "$EXECUTABLE_PATH" | tee /dev/stderr | grep -q "arm64"
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
           codesign --display --verbose=2 "$APP_PATH"

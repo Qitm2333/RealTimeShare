@@ -43,11 +43,13 @@ macOS 包必须在 macOS 环境中构建。本项目使用 GitHub Actions 生成
 1. 打开仓库的 **Releases** 页面。
 2. 打开最新的 **macOS Test Build** 预发布版本。
 3. 下载 `Torras Live Interaction-1.0.0-mac-arm64.zip`。
-4. 同时下载 `SHA256SUMS.txt`，核对文件完整性后解压，即可得到 `Torras Live Interaction.app`。
+4. 同时下载 `SHA256SUMS.txt`，核对文件完整性后解压，即可得到 App 和首次打开辅助脚本。
 
 每次手动运行 **Build macOS** workflow 后都会生成一个新的预发布版本。Actions 运行详情中的 `torras-live-interaction-macos-arm64` Artifact 仍会保留 14 天，仅作为开发备用下载。
 
 当前 Actions 产物仅使用 ad-hoc 临时签名，未进行 Apple Developer 签名和公证，只用于内部测试。首次打开方式和验证清单见 [macOS 测试说明](docs/MACOS.md)。
+
+首次使用时，让 `首次打开 Torras.command` 与 `Torras Live Interaction.app` 保持在同一目录，右键辅助脚本并选择“打开”。该脚本不需要管理员权限，只会移除旁边 App 的下载隔离标记并启动它。
 
 在真实 Mac 上也可以直接构建：
 

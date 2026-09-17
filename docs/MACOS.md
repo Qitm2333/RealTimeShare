@@ -11,7 +11,7 @@ GitHub Actions 生成 Apple Silicon `arm64` ZIP，适用于 M1 及后续 Apple �
 1. 进入 GitHub 仓库的 **Releases** 页面。
 2. 打开最新的 **macOS Test Build** 预发布版本。
 3. 下载 `Torras Live Interaction-1.0.0-mac-arm64.zip` 和 `SHA256SUMS.txt`。
-4. 核对 SHA-256 后解压 ZIP，得到 `Torras Live Interaction.app`。
+4. 核对 SHA-256 后解压 ZIP，得到 `Torras Live Interaction.app` 和 `首次打开 Torras.command`。
 
 需要生成新测试包时，进入 **Actions** 页面，打开 **Build macOS**，点击 **Run workflow** 并选择 `master` 分支。构建成功后会自动创建新的预发布版本；运行详情中的 `torras-live-interaction-macos-arm64` Artifact 仍保留 14 天，供开发排查时备用。
 
@@ -19,9 +19,11 @@ GitHub Actions 生成 Apple Silicon `arm64` ZIP，适用于 M1 及后续 Apple �
 
 因为测试包尚未进行 Apple Developer 签名和公证，macOS 可能阻止直接双击运行。优先使用下面的方式：
 
-1. 将 App 移动到“应用程序”。
-2. 在 Finder 中右键 App，选择“打开”。
-3. 在系统确认框中再次选择“打开”。
+1. 保持 `首次打开 Torras.command` 与 App 位于同一目录。
+2. 在 Finder 中右键辅助脚本，选择“打开”。
+3. 脚本会移除旁边 App 的下载隔离标记并自动启动 App。
+
+辅助脚本不使用 `sudo`，不会修改系统安全设置，只处理同目录下名称完全匹配的 `Torras Live Interaction.app`。以后可以直接打开 App，不需要重复运行脚本。
 
 如果仍被隔离策略阻止，内部测试人员可以在终端执行：
 
