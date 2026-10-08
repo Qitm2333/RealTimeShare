@@ -45,9 +45,8 @@
   const qrUrlSelect = document.getElementById('qrUrlSelect');
   const qrSave = document.getElementById('qrSave');
   const qrHint = document.getElementById('qrHint');
+  const danmuToggle = document.getElementById('danmuToggle');
   const giftToggle = document.getElementById('giftToggle');
-  const audienceReadToggle = document.getElementById('audienceReadToggle');
-  const audienceModeToggle = document.getElementById('audienceModeToggle');
   const pollToggle = document.getElementById('pollToggle');
   const pollPanel = document.getElementById('pollPanel');
   const pollClose = document.getElementById('pollClose');
@@ -84,6 +83,10 @@
   const lotteryResult = document.getElementById('lotteryResult');
   const lotteryRoller = document.getElementById('lotteryRoller');
   const lotteryRollerName = document.getElementById('lotteryRollerName');
+  const giftEffectLimit = document.getElementById('giftEffectLimit');
+  const danmuBlockedWords = document.getElementById('danmuBlockedWords');
+  const settingsSave = document.getElementById('settingsSave');
+  const settingsStatus = document.getElementById('settingsStatus');
   const presenterLotteryDialog = document.getElementById('presenterLotteryDialog');
   const presenterLotteryWinners = document.getElementById('presenterLotteryWinners');
   const presenterLotteryAck = document.getElementById('presenterLotteryAck');
@@ -140,6 +143,8 @@
   const trackCount = 5;
   const manualAudienceUrlKey = 'live-share-manual-audience-url';
   const giftEffectsEnabledKey = 'live-share-gift-effects-enabled';
+  const danmuEffectsEnabledKey = 'live-share-danmu-effects-enabled';
+  const giftEffectLimitKey = 'live-share-gift-effect-limit';
   const trackBusyUntil = Array.from({ length: trackCount }, () => 0);
   const recentEffects = [];
   let giftList = [];
@@ -148,10 +153,10 @@
   let documentInfo;
   let websocket;
   let giftEffectsEnabled = localStorage.getItem(giftEffectsEnabledKey) !== 'false';
+  let danmuEffectsEnabled = localStorage.getItem(danmuEffectsEnabledKey) !== 'false';
+  let maxGiftEffects = normalizeGiftEffectLimit(localStorage.getItem(giftEffectLimitKey));
   let connectionText = '未连接';
   let audienceCount = 0;
-  let audienceMode = 'reader';
-  let audienceReadingEnabled = true;
   let lastStats;
   let fullscreenUiTimer;
   let lastFullscreenState = false;
@@ -237,7 +242,7 @@
   }
 
   function setToolTab(tool) {
-    const nextTool = ['poll', 'ranking', 'lottery'].includes(tool) ? tool : 'poll';
+    const nextTool = ['poll', 'ranking', 'lottery', 'settings'].includes(tool) ? tool : 'poll';
     activeTool = nextTool;
     toolTabs.forEach((tab) => {
       const active = tab.dataset.toolTab === nextTool;
@@ -713,8 +718,7 @@
       return;
     }
 
-    const edgeDistance = Math.min(event.clientY, window.innerHeight - event.clientY);
-    if (edgeDistance < 88) {
+    if (event.clientX < 88 && event.clientY < 88) {
       revealFullscreenUi();
     }
   }
@@ -789,8 +793,6 @@
 
   function applyDocument(nextDocument) {
     documentInfo = nextDocument || { available: false };
-    if (typeof documentInfo.audienceMode === 'string') setAudienceMode(documentInfo.audienceMode);
-    if (typeof documentInfo.audienceReadingEnabled === 'boolean') setAudienceReadingEnabled(documentInfo.audienceReadingEnabled);
     if (pdfFileButton) pdfFileButton.textContent = documentInfo.available ? '替换课件' : '上传课件';
     pdfStatus.textContent = documentInfo.available ? '已就绪' : '未打开';
 
@@ -996,6 +998,7 @@
   }
 
   function addDanmu(message) {
+    if (!danmuEffectsEnabled) return;
     const item = document.createElement('div');
     const track = chooseTrack();
     const layerHeight = danmuLayer.clientHeight;
@@ -1012,6 +1015,7 @@
   }
 
   function addQuickDanmu(message) {
+    if (!danmuEffectsEnabled) return;
     const phrase = quickPhrasesById[message.phraseId];
     if (!phrase) return;
     if (!giftEffectsEnabled) {
@@ -1078,6 +1082,9 @@
     item.appendChild(arc);
     addEffectParticles(item, gift);
 
+    while (effectLayer.children.length >= maxGiftEffects) {
+      effectLayer.firstElementChild?.remove();
+    }
     effectLayer.appendChild(item);
     item.addEventListener(
       'animationend',
@@ -1307,72 +1314,73 @@
     }
   }
 
+  function setDanmuEffectsEnabled(enabled) {
+    danmuEffectsEnabled = Boolean(enabled);
+    localStorage.setItem(danmuEffectsEnabledKey, String(danmuEffectsEnabled));
+    danmuToggle.textContent = danmuEffectsEnabled ? '弹幕开' : '弹幕关';
+    danmuToggle.classList.toggle('is-on', danmuEffectsEnabled);
+    danmuToggle.setAttribute('aria-pressed', String(danmuEffectsEnabled));
+    if (!danmuEffectsEnabled) danmuLayer.textContent = '';
+  }
+
+  function normalizeGiftEffectLimit(value) {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) ? Math.min(9999, Math.max(1, parsed)) : 9999;
+  }
+
+  function setGiftEffectLimit(value) {
+    maxGiftEffects = normalizeGiftEffectLimit(value);
+    if (giftEffectLimit) giftEffectLimit.value = String(maxGiftEffects);
+    localStorage.setItem(giftEffectLimitKey, String(maxGiftEffects));
+    while (effectLayer.children.length > maxGiftEffects) effectLayer.firstElementChild?.remove();
+  }
+
+  function setSettingsStatus(text, type = '') {
+    if (!settingsStatus) return;
+    settingsStatus.textContent = text;
+    settingsStatus.className = `settings-status ${type}`.trim();
+  }
+
+  async function loadDanmuFilter() {
+    try {
+      const response = await fetch('/api/danmu-filter');
+      if (!response.ok) throw new Error('Danmu filter loading failed');
+      const data = await response.json();
+      danmuBlockedWords.value = Array.isArray(data.words) ? data.words.join('\n') : '';
+    } catch (error) {
+      setSettingsStatus('屏蔽词加载失败', 'is-error');
+    }
+  }
+
+  async function saveSettings() {
+    setGiftEffectLimit(giftEffectLimit.value);
+    const words = danmuBlockedWords.value
+      .split(/[\n,，、]+/)
+      .map((word) => word.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+    settingsSave.disabled = true;
+    try {
+      const response = await fetch('/api/danmu-filter', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ words })
+      });
+      if (!response.ok) throw new Error('Danmu filter save failed');
+      const data = await response.json();
+      danmuBlockedWords.value = Array.isArray(data.words) ? data.words.join('\n') : '';
+      setSettingsStatus('设置已保存', 'is-success');
+    } catch (error) {
+      setSettingsStatus('屏蔽词保存失败', 'is-error');
+    } finally {
+      settingsSave.disabled = false;
+    }
+  }
+
   function clearSessionEffects() {
     effectLayer.textContent = '';
     recentEffects.length = 0;
     comboBadge.hidden = true;
     renderLotteryResult(null);
-  }
-
-  function setAudienceMode(mode) {
-    audienceMode = mode === 'reader' ? 'reader' : 'interaction';
-    audienceModeToggle.classList.toggle('is-enabled', audienceMode === 'reader');
-    audienceModeToggle.setAttribute('aria-pressed', String(audienceMode === 'reader'));
-    audienceModeToggle.title = audienceMode === 'reader' ? '观众可以下载 PDF' : '观众只能在线阅读';
-    audienceModeToggle.disabled = !audienceReadingEnabled;
-  }
-
-  function setAudienceReadingEnabled(enabled) {
-    audienceReadingEnabled = Boolean(enabled);
-    audienceReadToggle.textContent = audienceReadingEnabled ? '已开启' : '已关闭';
-    audienceReadToggle.classList.toggle('is-enabled', audienceReadingEnabled);
-    audienceReadToggle.setAttribute('aria-pressed', String(audienceReadingEnabled));
-    audienceReadToggle.title = audienceReadingEnabled ? '观众可以阅读 PDF' : '观众无法阅读 PDF';
-    audienceModeToggle.disabled = !audienceReadingEnabled;
-  }
-
-  async function toggleAudienceMode() {
-    const nextMode = audienceMode === 'reader' ? 'interaction' : 'reader';
-
-    try {
-      const response = await fetch('/api/audience-mode', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ mode: nextMode })
-      });
-
-      if (!response.ok) {
-        throw new Error('Audience mode update failed');
-      }
-
-      setAudienceMode(nextMode);
-      toast.textContent = nextMode === 'reader' ? '观众可以下载当前 PDF' : '观众只能在线阅读';
-    } catch (error) {
-      toast.textContent = '下载权限切换失败';
-    }
-  }
-
-  async function toggleAudienceReading() {
-    const enabled = !audienceReadingEnabled;
-
-    try {
-      const response = await fetch('/api/audience-reading', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ enabled })
-      });
-
-      if (!response.ok) throw new Error('Audience reading update failed');
-      const result = await response.json();
-      setAudienceReadingEnabled(result.enabled);
-      toast.textContent = result.enabled ? '观众可以阅读当前 PDF' : '已关闭观众阅读';
-    } catch (error) {
-      toast.textContent = '阅读权限切换失败';
-    }
   }
 
   async function resetSession() {
@@ -1440,16 +1448,12 @@
         applyGifts(message.gifts);
       }
 
+      if (message.type === 'config' && message.status === 'danmu-filter') {
+        danmuBlockedWords.value = Array.isArray(message.words) ? message.words.join('\n') : '';
+      }
+
       if (message.type === 'document') {
         applyDocument(message.document);
-      }
-
-      if (message.type === 'system' && message.status === 'audience-mode') {
-        setAudienceMode(message.mode);
-      }
-
-      if (message.type === 'system' && message.status === 'audience-reading') {
-        setAudienceReadingEnabled(message.enabled);
       }
 
       if (message.type === 'system' && message.status === 'session-reset') {
@@ -1559,6 +1563,7 @@
       unlockPresenter();
       await loadDocument();
       await loadAudienceUrls();
+      await loadDanmuFilter();
       connectWebSocket();
     } catch (error) {
       passwordError.hidden = false;
@@ -1650,8 +1655,7 @@
   presenterLotteryClose?.addEventListener('click', hidePresenterLotteryWinner);
   setLotteryCount(1);
   sessionReset.addEventListener('click', resetSession);
-  audienceReadToggle.addEventListener('click', toggleAudienceReading);
-  audienceModeToggle.addEventListener('click', toggleAudienceMode);
+  danmuToggle.addEventListener('click', () => setDanmuEffectsEnabled(!danmuEffectsEnabled));
   qrToggle.addEventListener('click', () => setQrExpanded(qrCard.hidden));
   qrClose.addEventListener('click', () => setQrExpanded(false));
   qrCard.addEventListener('pointerenter', () => {
@@ -1688,13 +1692,20 @@
     setQrHint('二维码生成失败，请检查地址后重试。', 'is-warning');
   });
   giftToggle.addEventListener('click', () => setGiftEffectsEnabled(!giftEffectsEnabled));
+  settingsSave.addEventListener('click', saveSettings);
+  pollMaxSelections.addEventListener('pointerdown', (event) => event.stopPropagation());
+  pollMaxSelections.addEventListener('click', (event) => event.stopPropagation());
+  toolsCard.addEventListener('pointerdown', (event) => event.stopPropagation());
+  toolsCard.addEventListener('click', (event) => event.stopPropagation());
   desktopStop?.addEventListener('click', () => window.desktopOverlay?.stop());
   window.addEventListener('storage', (event) => {
     if (event.key === giftEffectsEnabledKey) setGiftEffectsEnabled(event.newValue !== 'false');
+    if (event.key === danmuEffectsEnabledKey) setDanmuEffectsEnabled(event.newValue !== 'false');
+    if (event.key === giftEffectLimitKey) setGiftEffectLimit(event.newValue);
   });
+  setDanmuEffectsEnabled(danmuEffectsEnabled);
   setGiftEffectsEnabled(giftEffectsEnabled);
-  setAudienceReadingEnabled(audienceReadingEnabled);
-  setAudienceMode(audienceMode);
+  setGiftEffectLimit(maxGiftEffects);
   revealFullscreenUi();
 
   if (desktopView === 'overlay' && window.desktopOverlay?.onToolbarVisibility) {
@@ -1717,6 +1728,7 @@
       passwordDialog.hidden = true;
       await loadDocument();
       await loadAudienceUrls();
+      await loadDanmuFilter();
     }
     if (authenticated) connectWebSocket();
   });

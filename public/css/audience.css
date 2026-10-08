@@ -44,10 +44,6 @@
   --ink: #1d1d1f;
 }
 
-.download-button {
-  display: none !important;
-}
-
 .poll-dialog,
 .identity-dialog {
   position: fixed;
@@ -336,7 +332,7 @@ a {
   width: min(760px, 100%);
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 12px 18px calc(96px + env(safe-area-inset-bottom));
+  padding: 12px 18px 24px;
   background: var(--page);
 }
 
@@ -372,167 +368,6 @@ h1 img {
   width: 112px;
   height: auto;
   flex: 0 0 auto;
-}
-
-.reader-panel {
-  margin-bottom: 8px;
-}
-
-.download-button {
-  display: inline-flex;
-  min-height: 34px;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  padding: 0 12px;
-  border: 1px solid #d2d2d7;
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.86);
-  color: #1d1d1f;
-  font-size: 12px;
-  font-weight: 700;
-  text-decoration: none;
-  white-space: nowrap;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-.download-button.is-disabled {
-  border-color: #dedee2;
-  background: #e8e8ed;
-  color: #98989d;
-  box-shadow: none;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.reader-viewport {
-  display: flex;
-  min-height: 320px;
-  flex-direction: column;
-  gap: 16px;
-  padding: 0;
-}
-
-.continuous-page {
-  position: relative;
-  display: grid;
-  width: 100%;
-  min-height: 180px;
-  place-items: center;
-  overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 8px;
-  background: #f5f5f7;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.05);
-}
-
-.continuous-page.is-rendered {
-  background: #fff;
-}
-
-.continuous-page-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  color: #6e6e73;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.continuous-page-status::before {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #d2d2d7;
-  border-top-color: var(--brand);
-  border-radius: 50%;
-  content: '';
-  animation: reader-page-spin 720ms linear infinite;
-}
-
-.continuous-page.is-error .continuous-page-status {
-  color: #b42318;
-}
-
-.continuous-page.is-error .continuous-page-status::before {
-  display: none;
-}
-
-.continuous-page-canvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  background: #fff;
-}
-
-@keyframes reader-page-spin {
-  to { transform: rotate(360deg); }
-}
-
-.reader-empty {
-  display: grid;
-  min-height: 320px;
-  place-items: center;
-  color: #6e6e73;
-  font-size: 14px;
-  text-align: center;
-}
-
-.bottom-nav {
-  position: fixed;
-  right: max(18px, env(safe-area-inset-right));
-  left: max(18px, env(safe-area-inset-left));
-  bottom: calc(18px + env(safe-area-inset-bottom));
-  z-index: 20;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px;
-  width: min(360px, calc(100% - 36px));
-  min-height: 52px;
-  margin: 0 auto;
-  padding: 3px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.86);
-  color: #1d1d1f;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
-  cursor: pointer;
-  backdrop-filter: blur(18px);
-}
-
-.nav-item {
-  display: grid;
-  min-width: 0;
-  min-height: 44px;
-  place-items: center;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: #6e6e73;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    background 160ms ease,
-    color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.nav-item.is-active {
-  background: var(--brand);
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(255, 91, 0, 0.24);
-}
-
-.nav-item:disabled {
-  background: transparent;
-  color: #aeaeb2;
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
-.nav-item:focus-visible {
-  outline: 3px solid var(--brand-ring);
-  outline-offset: 2px;
 }
 
 .interaction-panel {
@@ -778,12 +613,6 @@ textarea:focus {
     justify-content: flex-start;
   }
 
-  .download-button {
-    width: 100%;
-    min-height: 32px;
-    padding: 0 10px;
-  }
-
   .interaction-panel-head {
     display: none;
   }
@@ -802,10 +631,6 @@ textarea:focus {
   .composer-row .primary-button {
     min-width: 0;
     padding: 0 8px;
-  }
-
-  .reader-viewport {
-    gap: 12px;
   }
 
   .interaction-panel {
@@ -839,12 +664,6 @@ textarea:focus {
     font-size: 25px;
   }
 
-  .bottom-nav {
-    right: 12px;
-    left: 12px;
-    width: calc(100% - 24px);
-    bottom: calc(14px + env(safe-area-inset-bottom));
-  }
 }
 
 @media (max-width: 360px) {
@@ -878,9 +697,4 @@ textarea:focus {
     font-size: 10px;
   }
 
-  .bottom-nav {
-    right: 10px;
-    left: 10px;
-    width: calc(100% - 20px);
-  }
 }

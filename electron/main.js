@@ -256,7 +256,8 @@ function startCursorWatch() {
       && cursor.y >= display.bounds.y
       && cursor.y < display.bounds.y + display.bounds.height;
     if (!onSelectedDisplay) return;
-    if (cursor.y <= display.bounds.y + 12) {
+    const atTopLeft = cursor.x <= display.bounds.x + 12 && cursor.y <= display.bounds.y + 12;
+    if (atTopLeft) {
       if (!toolbarExpanded) setToolbarBounds(true);
       scheduleToolbarCollapse();
     } else if (toolbarExpanded && cursor.y > display.bounds.y + Math.max(toolbarContentHeight, 90)) {

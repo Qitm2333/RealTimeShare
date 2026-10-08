@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Torras 极致开放麦互动系统 - 观众端</title>
-    <link rel="stylesheet" href="/css/audience.css?v=20260917-5" />
+    <link rel="stylesheet" href="/css/audience.css?v=20261008-1" />
   </head>
   <body>
     <main class="audience-app">
@@ -17,7 +17,6 @@
           </div>
           <span id="connectionStatus" class="status">连接中</span>
         </div>
-        <a id="downloadButton" class="download-button" href="/document/current.pdf?download=1" download hidden>下载 PDF</a>
       </header>
 
       <section id="interactionPanel" class="interaction-panel app-view" aria-label="Torras 开放麦互动">
@@ -42,20 +41,6 @@
         <div id="effectGrid" class="effect-grid" aria-label="互动按钮"></div>
       </section>
 
-      <section id="readerPanel" class="reader-panel app-view" aria-label="PDF 阅读" hidden>
-        <div id="readerViewport" class="reader-viewport">
-          <div id="readerEmpty" class="reader-empty">正在等待演讲者上传 PDF</div>
-        </div>
-      </section>
-
-      <nav class="bottom-nav" aria-label="页面切换">
-        <button id="interactionTab" class="nav-item is-active" type="button" aria-controls="interactionPanel" aria-selected="true">
-          互动
-        </button>
-        <button id="readerTab" class="nav-item" type="button" aria-controls="readerPanel" aria-selected="false">
-          阅读
-        </button>
-      </nav>
     </main>
     <section id="pollDialog" class="poll-dialog" hidden aria-hidden="true" aria-live="polite">
       <div class="poll-panel" role="dialog" aria-modal="true" aria-labelledby="pollQuestion" aria-describedby="pollStatus">
@@ -83,7 +68,6 @@
       </div>
     </section>
 
-    <script src="/js/pdf-reader.js?v=20260916-3"></script>
-    <script src="/js/audience.js?v=20260917-5"></script>
+    <script src="/js/audience.js?v=20261008-1"></script>
   </body>
 </html>

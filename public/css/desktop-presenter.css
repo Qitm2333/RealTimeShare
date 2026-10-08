@@ -75,10 +75,6 @@ html[data-desktop-view="toolbar"] .pdf-file-actions {
   display: flex;
 }
 
-html[data-desktop-view="toolbar"] #audienceModeToggle {
-  display: none !important;
-}
-
 html[data-desktop-view="toolbar"] .pdf-upload-progress {
   flex: 0 1 220px;
 }

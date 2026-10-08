@@ -10,8 +10,8 @@
         if (view) document.documentElement.dataset.desktopView = view;
       })();
     </script>
-    <link rel="stylesheet" href="/css/presenter.css?v=20260917-5" />
-    <link rel="stylesheet" href="/css/desktop-presenter.css?v=20260917-4" />
+    <link rel="stylesheet" href="/css/presenter.css?v=20261008-1" />
+    <link rel="stylesheet" href="/css/desktop-presenter.css?v=20261008-1" />
   </head>
   <body>
     <main class="stage">
@@ -28,12 +28,8 @@
             <div id="pdfUploadProgressTrack" class="pdf-upload-progress-track" role="progressbar" aria-label="PDF 上传进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="pdfUploadProgressBar"></span></div>
           </div>
           <button id="pollToggle" class="secondary-button" type="button" aria-haspopup="dialog" aria-expanded="false">投票</button>
+          <button id="danmuToggle" class="gift-toggle is-on" type="button" aria-pressed="true">弹幕开</button>
           <button id="giftToggle" class="gift-toggle is-on" type="button" aria-pressed="true">礼物开</button>
-          <div class="audience-mode-panel" aria-label="观众 PDF 阅读权限">
-            <span>观众阅读</span>
-            <button id="audienceReadToggle" type="button" aria-pressed="true">已开启</button>
-            <button id="audienceModeToggle" type="button" aria-pressed="false" hidden>下载</button>
-          </div>
           <div class="pdf-reader-actions" aria-label="PDF 阅读控制">
             <button id="pdfPrevious" type="button" aria-label="上一页">‹</button>
             <span class="page-indicator"><span id="pdfPageNumber">1</span> / <span id="pdfPageCount">0</span><input id="pdfPageInput" class="visually-hidden" type="number" min="1" value="1" aria-hidden="true" tabindex="-1" /></span>
@@ -121,6 +117,7 @@
           <button id="pollTab" class="is-active" type="button" data-tool-tab="poll" aria-controls="pollToolView" aria-selected="true">投票</button>
           <button id="rankingTab" type="button" data-tool-tab="ranking" aria-controls="rankingToolView" aria-selected="false">排名</button>
           <button id="lotteryTab" type="button" data-tool-tab="lottery" aria-controls="lotteryToolView" aria-selected="false">抽奖</button>
+          <button id="settingsTab" type="button" data-tool-tab="settings" aria-controls="settingsToolView" aria-selected="false">设置</button>
         </nav>
         <section id="pollToolView" data-tool-view="poll" aria-labelledby="pollTab">
           <div id="pollHome" class="poll-home">
@@ -168,6 +165,22 @@
           </div>
           <div id="lotteryResult" class="lottery-result" hidden></div>
         </section>
+        <section id="settingsToolView" data-tool-view="settings" aria-labelledby="settingsTab" hidden>
+          <div class="interaction-settings">
+            <label class="settings-field">
+              <span>同屏礼物数量</span>
+              <small>同一时刻最多显示多少个礼物动画，默认上限 9999。</small>
+              <input id="giftEffectLimit" type="number" min="1" max="9999" step="1" value="9999" inputmode="numeric" />
+            </label>
+            <label class="settings-field">
+              <span>弹幕屏蔽词</span>
+              <small>每行或用逗号分隔一个词，命中后不会显示，也不会计入互动统计。</small>
+              <textarea id="danmuBlockedWords" rows="6" maxlength="8000" placeholder="例如：广告\n刷屏"></textarea>
+            </label>
+            <button id="settingsSave" class="primary-button" type="button">保存设置</button>
+            <p id="settingsStatus" class="settings-status" aria-live="polite"></p>
+          </div>
+        </section>
       </div>
     </aside>
 
@@ -184,6 +197,6 @@
     </div>
 
     <script src="/js/pdf-reader.js?v=20260916-3"></script>
-    <script src="/js/presenter.js?v=20260917-5"></script>
+    <script src="/js/presenter.js?v=20261008-1"></script>
   </body>
 </html>

@@ -26,6 +26,7 @@ const currentPdfPath = path.join(dataDir, 'current.pdf');
 const usersPath = path.join(dataDir, 'users.json');
 const interactionStatePath = path.join(dataDir, 'interaction-state.json');
 const lotteryHistoryPath = path.join(dataDir, 'lottery-history.json');
+const danmuFilterPath = path.join(dataDir, 'danmu-filter.json');
 
 const quickPhrases = [
   { id: 'sustain-iteration', text: '持续迭代', image: '/assets/quick-phrases/sustain-iteration.png' },
@@ -56,12 +57,11 @@ fs.mkdirSync(dataDir, { recursive: true });
 
 let gifts = loadGifts();
 let validEffectIds = new Set(gifts.map((gift) => gift.id));
-let audienceMode = 'reader';
-let audienceReadingEnabled = true;
 let activePoll = null;
 let documentState = readDocumentState();
 const users = loadUsers();
 const userCooldowns = new Map();
+let blockedWords = loadBlockedWords();
 
 function loadUsers() {
   try {
@@ -85,6 +85,36 @@ function persistUsers() {
   const tempPath = `${usersPath}.tmp`;
   fs.writeFileSync(tempPath, JSON.stringify(Object.fromEntries(users), null, 2));
   fs.renameSync(tempPath, usersPath);
+}
+
+function normalizeBlockedWords(value) {
+  const rawWords = Array.isArray(value)
+    ? value
+    : String(value || '').split(/[\n,，、]+/);
+  return Array.from(new Set(rawWords
+    .map((word) => String(word || '').replace(/\s+/g, ' ').trim().slice(0, 40))
+    .filter((word) => word.length >= 1 && word.length <= 40)
+  )).slice(0, 200);
+}
+
+function loadBlockedWords() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(danmuFilterPath, 'utf8'));
+    return normalizeBlockedWords(parsed?.words);
+  } catch (error) {
+    return [];
+  }
+}
+
+function persistBlockedWords() {
+  const tempPath = `${danmuFilterPath}.tmp`;
+  fs.writeFileSync(tempPath, JSON.stringify({ words: blockedWords }, null, 2));
+  fs.renameSync(tempPath, danmuFilterPath);
+}
+
+function containsBlockedWord(content) {
+  const normalizedContent = String(content || '').toLocaleLowerCase();
+  return blockedWords.find((word) => normalizedContent.includes(word.toLocaleLowerCase())) || null;
 }
 
 function createUserId() {
@@ -563,11 +593,7 @@ app.get('/api/session', (req, res) => {
 });
 
 function getDocumentPayload() {
-  return {
-    ...documentState,
-    audienceMode,
-    audienceReadingEnabled
-  };
+  return { ...documentState };
 }
 
 function getPollPayload(poll = activePoll) {
@@ -759,14 +785,8 @@ app.get('/document/current.pdf', (req, res) => {
 
   const download = req.query.download === '1';
   if (!isPresenterAuthenticated(req)) {
-    if (!audienceReadingEnabled) {
-      res.status(403).send('Audience reading is disabled');
-      return;
-    }
-    if (download && audienceMode !== 'reader') {
-      res.status(403).send('Audience downloads are disabled');
-      return;
-    }
+    res.status(403).send('Audience PDF access is disabled');
+    return;
   }
   const fileName = documentState.name || 'document.pdf';
   const contentDisposition = download
@@ -785,32 +805,24 @@ app.get('/document/current.pdf', (req, res) => {
   });
 });
 
-app.post('/api/audience-mode', requirePresenter, (req, res) => {
-  const mode = req.body?.mode;
-  if (mode !== 'reader' && mode !== 'interaction') {
-    res.status(400).json({ error: 'invalid_mode' });
-    return;
-  }
-
-  audienceMode = mode;
-  broadcast({ type: 'system', status: 'audience-mode', mode: audienceMode });
-  res.json({ ok: true, mode: audienceMode });
-});
-
-app.post('/api/audience-reading', requirePresenter, (req, res) => {
-  if (typeof req.body?.enabled !== 'boolean') {
-    res.status(400).json({ error: 'invalid_reading_permission' });
-    return;
-  }
-
-  audienceReadingEnabled = req.body.enabled;
-  const document = getDocumentPayload();
-  broadcast({ type: 'system', status: 'audience-reading', enabled: audienceReadingEnabled });
-  res.json({ ok: true, enabled: audienceReadingEnabled, document });
-});
-
 app.get('/api/gifts', (req, res) => {
   res.json({ gifts });
+});
+
+app.get('/api/danmu-filter', requirePresenter, (_req, res) => {
+  res.json({ words: blockedWords.slice() });
+});
+
+app.put('/api/danmu-filter', requirePresenter, (req, res) => {
+  const words = normalizeBlockedWords(req.body?.words);
+  blockedWords = words;
+  try {
+    persistBlockedWords();
+    broadcastToPresenters({ type: 'config', status: 'danmu-filter', words: blockedWords.slice() });
+    res.json({ ok: true, words: blockedWords.slice() });
+  } catch (error) {
+    res.status(500).json({ error: 'danmu_filter_save_failed' });
+  }
 });
 
 app.get('/api/quick-phrases', (req, res) => {
@@ -1015,7 +1027,7 @@ wss.on('connection', (ws, req) => {
   ws.send(JSON.stringify({ type: 'stats', stats: getPublicStatsPayload() }));
   ws.send(JSON.stringify({ type: 'document', document: getDocumentPayload() }));
   ws.send(JSON.stringify({ type: 'config', status: 'gifts', gifts }));
-  ws.send(JSON.stringify({ type: 'system', status: 'audience-mode', mode: audienceMode }));
+  if (ws.presenterAuthorized) ws.send(JSON.stringify({ type: 'config', status: 'danmu-filter', words: blockedWords.slice() }));
   broadcastAudienceCount();
 
   ws.on('message', (raw) => {
@@ -1319,6 +1331,14 @@ wss.on('connection', (ws, req) => {
     if (message.type === 'effect' && now - cooldown.effectAt < EFFECT_COOLDOWN_MS) {
       ws.send(JSON.stringify({ type: 'system', status: 'cooldown', scope: 'effect' }));
       return;
+    }
+
+    if (message.type === 'danmu' || message.type === 'quick-danmu') {
+      const blockedWord = containsBlockedWord(message.content);
+      if (blockedWord) {
+        ws.send(JSON.stringify({ type: 'system', status: 'blocked', scope: 'danmu', word: blockedWord }));
+        return;
+      }
     }
 
     if (message.type === 'danmu') {

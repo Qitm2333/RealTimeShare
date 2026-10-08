@@ -5,11 +5,7 @@
   const sendButton = document.getElementById('sendButton');
   const quickPhraseGrid = document.getElementById('quickPhraseGrid');
   const effectGrid = document.getElementById('effectGrid');
-  const readerPanel = document.getElementById('readerPanel');
-  const downloadButton = document.getElementById('downloadButton');
   const interactionPanel = document.getElementById('interactionPanel');
-  const interactionTab = document.getElementById('interactionTab');
-  const readerTab = document.getElementById('readerTab');
   const pollDialog = document.getElementById('pollDialog');
   const pollQuestion = document.getElementById('pollQuestion');
   const pollOptions = document.getElementById('pollOptions');
@@ -32,18 +28,12 @@
   let pendingVoteIndices = null;
   let selectedVoteIndices = [];
   let voteSuccessTimer = 0;
-  const pdfReader = new window.ContinuousPdfReader({
-    container: document.getElementById('readerViewport'),
-    emptyState: document.getElementById('readerEmpty')
-  });
   let giftList = [];
   let giftsById = {};
   let effectControls = [];
   let quickPhraseList = [];
   let quickPhraseControls = [];
   const controls = [sendButton];
-  let documentInfo = { available: false, audienceMode: 'reader', audienceReadingEnabled: true };
-
   const danmuCooldownMs = 1300;
   const quickPhraseCooldownMs = 950;
   const effectTapGapMs = 150;
@@ -198,48 +188,6 @@
     effectControls.forEach((control) => {
       control.disabled = !isConnected() || !identityConfirmed;
     });
-  }
-
-  function applyDocumentState(nextDocument) {
-    documentInfo = nextDocument || { available: false, audienceMode: 'reader', audienceReadingEnabled: true };
-    const readingEnabled = documentInfo.audienceReadingEnabled !== false;
-    const canRead = Boolean(documentInfo.available && readingEnabled);
-
-    if (!canRead) {
-      if (activeView === 'reader') activeView = 'interaction';
-      pdfReader.clear(readingEnabled ? '正在等待演讲者上传 PDF' : '演讲者暂未开放阅读');
-    }
-
-    readerPanel.hidden = !canRead || activeView !== 'reader';
-    interactionPanel.hidden = activeView !== 'interaction';
-    readerTab.disabled = !canRead;
-    readerTab.title = canRead ? '' : (documentInfo.available ? '演讲者暂未开放阅读' : '暂无可阅读的 PDF');
-    readerTab.setAttribute('aria-disabled', String(!canRead));
-    downloadButton.hidden = !documentInfo.available;
-    const downloadDisabled = !canRead || documentInfo.audienceMode !== 'reader';
-    downloadButton.classList.toggle('is-disabled', downloadDisabled);
-    downloadButton.setAttribute('aria-disabled', String(downloadDisabled));
-    downloadButton.tabIndex = downloadDisabled ? -1 : 0;
-    updateViewState(activeView);
-
-    if (!canRead) return;
-
-    if (activeView === 'reader') {
-      pdfReader.load(`/document/current.pdf?v=${encodeURIComponent(documentInfo.updatedAt || Date.now())}`);
-    }
-  }
-
-  async function loadDocumentState() {
-    try {
-      const response = await fetch('/api/document');
-      if (!response.ok) {
-        throw new Error('Document status failed');
-      }
-
-      applyDocumentState(await response.json());
-    } catch (error) {
-      applyDocumentState({ available: false, audienceMode: 'reader', audienceReadingEnabled: true });
-    }
   }
 
   function getUser() {
@@ -415,29 +363,6 @@
     setQuickPhraseCooldown();
   }
 
-  function setActiveView(view) {
-    const canRead = documentInfo.available && documentInfo.audienceReadingEnabled !== false;
-    activeView = view === 'reader' && canRead ? 'reader' : 'interaction';
-    updateViewState(activeView);
-
-    if (activeView === 'reader' && documentInfo.available) {
-      readerPanel.hidden = false;
-      pdfReader.load(`/document/current.pdf?v=${encodeURIComponent(documentInfo.updatedAt || Date.now())}`);
-    } else {
-      pdfReader.suspend();
-    }
-  }
-
-  function updateViewState(view) {
-    const isReader = view === 'reader' && documentInfo.available && documentInfo.audienceReadingEnabled !== false;
-    interactionPanel.hidden = isReader;
-    readerPanel.hidden = !isReader || !documentInfo.available;
-    interactionTab.classList.toggle('is-active', !isReader);
-    readerTab.classList.toggle('is-active', isReader);
-    interactionTab.setAttribute('aria-selected', String(!isReader));
-    readerTab.setAttribute('aria-selected', String(isReader));
-  }
-
   function connectWebSocket() {
     if (websocket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(websocket.readyState)) return;
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -489,16 +414,6 @@
         applyGifts(message.gifts);
       }
 
-      if (message.type === 'document') {
-        applyDocumentState(message.document);
-      }
-
-      if (message.type === 'system' && message.status === 'audience-mode') {
-        applyDocumentState({ ...documentInfo, audienceMode: message.mode });
-      }
-      if (message.type === 'system' && message.status === 'audience-reading') {
-        applyDocumentState({ ...documentInfo, audienceReadingEnabled: message.enabled });
-      }
       if (['poll-start', 'poll-state'].includes(message.type)) showPoll(message.poll);
       if (message.type === 'poll-end') { pendingVoteIndices = null; showPoll(null); }
       if (message.type === 'poll-voted') { showVoteSuccess(message.pollId, message.optionIndices); }
@@ -671,17 +586,10 @@
     }
   });
 
-  interactionTab.addEventListener('click', () => setActiveView('interaction'));
-  readerTab.addEventListener('click', () => setActiveView('reader'));
-
-  Promise.all([loadGifts(), loadQuickPhrases(), loadDocumentState()]).then(() => {
-    setActiveView('interaction');
+  Promise.all([loadGifts(), loadQuickPhrases()]).then(() => {
     if (!identityReady) showIdentityDialog();
     connectWebSocket();
   });
 
   nickname.readOnly = true;
-  downloadButton.addEventListener('click', (event) => {
-    if (documentInfo?.audienceMode !== 'reader' || documentInfo?.audienceReadingEnabled === false) event.preventDefault();
-  });
 })();

@@ -148,8 +148,7 @@ body {
 
 .file-button,
 .secondary-button,
-.pdf-reader-actions button,
-.audience-mode-panel button {
+.pdf-reader-actions button {
   min-height: 34px;
   border: 1px solid #d2d2d7;
   border-radius: 7px;
@@ -173,8 +172,7 @@ body {
 .file-button.is-busy { pointer-events:none; opacity:.55; }
 
 .secondary-button,
-.pdf-reader-actions button,
-.audience-mode-panel button {
+.pdf-reader-actions button {
   padding: 0 10px;
 }
 .page-indicator { display:inline-flex; align-items:center; min-height:34px; padding:0 4px; color:#6e6e73; font-size:13px; font-weight:800; white-space:nowrap; }
@@ -304,37 +302,10 @@ body {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
-.audience-mode-panel {
-  position: absolute;
-  top: 76px;
-  left: 16px;
-  z-index: 11;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 34px;
-  padding: 0 4px 0 10px;
-  border: 1px solid #d2d2d7;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.92);
-  color: #1d1d1f;
-  font-size: 12px;
-  font-weight: 800;
-  backdrop-filter: blur(16px);
-}
-
-.pdf-toolbar .audience-mode-panel {
-  position: static;
-  top: auto;
-  left: auto;
-  z-index: auto;
-  flex: 0 0 auto;
-}
-
 .tools-dialog { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); overscroll-behavior: contain; }
 .tools-dialog[hidden] { display: none; }
-.tools-scrim { position: absolute; inset: 0; background: rgba(29, 29, 31, 0.18); }
-.tools-card { position: relative; width: min(520px, 100%); max-height: min(760px, 100%); overflow: auto; padding: 18px; border: 1px solid #d2d2d7; border-radius: 12px; background: rgba(255,255,255,.98); box-shadow: 0 18px 50px rgba(0,0,0,.18); color: #1d1d1f; overscroll-behavior: contain; }
+.tools-scrim { position: absolute; inset: 0; z-index: 0; background: rgba(29, 29, 31, 0.18); }
+.tools-card { position: relative; z-index: 1; width: min(520px, 100%); max-height: min(760px, 100%); overflow: auto; padding: 18px; border: 1px solid #d2d2d7; border-radius: 12px; background: rgba(255,255,255,.98); box-shadow: 0 18px 50px rgba(0,0,0,.18); color: #1d1d1f; overscroll-behavior: contain; }
 .poll-panel-head,.poll-editor-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .poll-panel-head button { width: 32px; height: 32px; border: 0; border-radius: 8px; background: #f5f5f7; color: #6e6e73; font-size: 22px; cursor: pointer; }
 .poll-panel-head button:hover { background: #e8e8ed; color: #1d1d1f; }
@@ -349,7 +320,7 @@ body {
 .poll-result-actions button:focus-visible,
 .lottery-controls button:focus-visible,
 .lottery-controls select:focus-visible { outline: 3px solid var(--brand-ring); outline-offset: 2px; }
-.tools-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin: 14px 0; padding: 3px; border-radius: 9px; background: #f5f5f7; }
+.tools-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; margin: 14px 0; padding: 3px; border-radius: 9px; background: #f5f5f7; }
 .tools-tabs button { min-height: 36px; border: 0; border-radius: 7px; background: transparent; color: #6e6e73; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
 .tools-tabs button.is-active { background: #fff; color: #1d1d1f; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
 .poll-home { display:grid; gap:14px; }
@@ -393,6 +364,17 @@ body {
 .poll-result-actions .danger-button { color:#b42318; }
 .tool-caption { margin: 0 0 12px; color:#6e6e73; font-size:12px; line-height:1.45; }
 .tool-empty { margin:20px 0; color:#6e6e73; text-align:center; font-size:13px; }
+.interaction-settings { display: grid; gap: 16px; }
+.settings-field { display: grid; gap: 6px; color: #1d1d1f; font-size: 13px; font-weight: 800; }
+.settings-field small { color: #6e6e73; font-size: 12px; font-weight: 500; line-height: 1.45; }
+.settings-field input,
+.settings-field textarea { width: 100%; box-sizing: border-box; border: 1px solid #d2d2d7; border-radius: 7px; background: #fff; color: #1d1d1f; font: inherit; font-weight: 500; outline: none; }
+.settings-field input { min-height: 40px; padding: 0 10px; }
+.settings-field textarea { min-height: 120px; padding: 10px; resize: vertical; }
+.settings-field input:focus,
+.settings-field textarea:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-ring); }
+.settings-status { min-height: 18px; margin: 0; color: var(--brand-strong); font-size: 12px; font-weight: 700; }
+.settings-status.is-error { color: #b42318; }
 .ranking-summary,.lottery-summary { margin-bottom:10px; color:#6e6e73; font-size:12px; }
 .ranking-list { display:grid; gap:7px; max-height:420px; overflow:auto; }
 .ranking-row { display:grid; grid-template-columns:28px minmax(0,1fr) auto; align-items:center; gap:9px; padding:9px 10px; border-radius:8px; background:#f5f5f7; }
@@ -446,25 +428,6 @@ body {
   .tools-tabs { margin: 10px 0 12px; }
   .poll-content-list { max-height: 330px; }
   .lottery-controls { gap:10px; padding:10px; }
-}
-
-.audience-mode-panel button {
-  min-height: 28px;
-  padding: 0 8px;
-  background: #fff;
-}
-
-.audience-mode-panel button.is-enabled {
-  border-color: var(--brand);
-  background: var(--brand);
-  color: #fff;
-}
-
-.audience-mode-panel button:disabled {
-  border-color: #dedee2;
-  background: #e8e8ed;
-  color: #98989d;
-  cursor: not-allowed;
 }
 
 .slide-frame {
@@ -1382,7 +1345,6 @@ body {
   pointer-events: none;
 }
 
-.stage.is-presentation-fullscreen.is-ui-hidden .audience-mode-panel,
 .stage.is-presentation-fullscreen.is-ui-hidden .presenter-bar > div:first-child {
   opacity: 0;
   visibility: hidden;
@@ -1414,11 +1376,6 @@ body {
 
   .pdf-reader-actions {
     margin-left: 0;
-  }
-
-  .audience-mode-panel {
-    top: 74px;
-    left: 12px;
   }
 
   .presenter-bar {
