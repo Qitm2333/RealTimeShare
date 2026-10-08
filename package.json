@@ -9,6 +9,7 @@
     "dev": "node server.js",
     "desktop": "electron .",
     "check": "node --check server.js && node --check electron/main.js && node --check electron/preload.js && node --check public/js/presenter.js && node --check public/js/audience.js && node --check public/js/desktop-start.js",
+    "test:load": "node scripts/load-test.js",
     "desktop:build": "electron-builder --win",
     "desktop:portable": "electron-builder --win portable",
     "desktop:mac": "electron-builder --mac zip --arm64 --publish never"
