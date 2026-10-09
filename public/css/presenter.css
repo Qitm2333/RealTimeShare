@@ -553,63 +553,88 @@ body {
   z-index: 28;
   overflow: hidden;
   pointer-events: none;
-  perspective: 700px;
+  perspective: 1100px;
+  perspective-origin: 50% 28%;
   contain: strict;
 }
 
 .award-fall {
   position: absolute;
-  top: -72px;
+  top: -96px;
   display: block;
   width: 1px;
   height: 1px;
+  opacity: var(--ribbon-opacity, 1);
+  filter: blur(var(--ribbon-blur, 0));
   will-change: transform;
-  animation: award-fall var(--fall-duration, 7s) linear var(--fall-delay, 0s) forwards;
+  animation: award-fall var(--fall-duration, 7s) cubic-bezier(0.28, 0.08, 0.72, 0.92) var(--fall-delay, 0s) forwards;
 }
 
 .award-sway {
   position: absolute;
   display: block;
+  transform-origin: 0 0;
   will-change: transform;
-  animation: award-sway var(--sway-duration, 2.2s) ease-in-out infinite alternate;
+  animation: award-sway var(--sway-duration, 2.2s) ease-in-out var(--sway-delay, 0s) infinite alternate;
 }
 
 .award-ribbon {
   display: block;
-  border-radius: 1px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
-  transform-origin: 50% 20%;
+  box-sizing: border-box;
+  border-radius: var(--ribbon-radius, 1px);
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.18), transparent 24%, rgba(255, 255, 255, 0.42) 50%, transparent 72%, rgba(0, 0, 0, 0.12)),
+    var(--ribbon-color, #ffce32);
+  box-shadow: 0 2px calc(3px * var(--depth-scale, 1)) rgba(0, 0, 0, 0.22);
+  transform-origin: 50% 50%;
+  backface-visibility: visible;
   will-change: transform;
-  animation: award-spin var(--spin-duration, 1.8s) linear infinite;
+  animation: award-spin var(--spin-duration, 1.8s) ease-in-out var(--spin-delay, 0s) infinite;
 }
 
 @keyframes award-fall {
-  from {
-    transform: translate3d(0, 0, 0);
+  0% {
+    transform: translate3d(0, 0, var(--ribbon-depth, 0)) rotateZ(var(--path-angle-a, 0deg));
   }
 
-  to {
-    transform: translate3d(var(--ribbon-drift, 0), calc(100vh + 150px), 0);
+  24% {
+    transform: translate3d(var(--drift-a, 0), 24vh, var(--ribbon-depth, 0)) rotateZ(var(--path-angle-b, 0deg));
+  }
+
+  51% {
+    transform: translate3d(var(--drift-b, 0), 53vh, var(--ribbon-depth, 0)) rotateZ(var(--path-angle-c, 0deg));
+  }
+
+  76% {
+    transform: translate3d(var(--drift-c, 0), 79vh, var(--ribbon-depth, 0)) rotateZ(var(--path-angle-d, 0deg));
+  }
+
+  100% {
+    transform: translate3d(var(--drift-d, 0), calc(100vh + 190px), var(--ribbon-depth, 0)) rotateZ(var(--path-angle-e, 0deg));
   }
 }
 
 @keyframes award-sway {
   from {
-    transform: translate3d(calc(var(--sway-distance, 32px) * -1), 0, 0) rotate(-7deg);
+    transform: translate3d(calc(var(--sway-distance, 32px) * -1), 0, 0) rotateZ(var(--sway-angle-a, -8deg));
   }
 
   to {
-    transform: translate3d(var(--sway-distance, 32px), 0, 0) rotate(7deg);
+    transform: translate3d(var(--sway-distance, 32px), 0, 0) rotateZ(var(--sway-angle-b, 8deg));
   }
 }
 
 @keyframes award-spin {
-  from {
-    transform: rotate(var(--spin-start, 0deg)) rotateX(0deg) rotateY(0deg);
+  0% {
+    transform: rotateZ(var(--spin-start, 0deg)) rotateX(0deg) rotateY(0deg) skewX(var(--ribbon-skew, 0deg));
   }
 
-  to {
-    transform: rotate(calc(var(--spin-start, 0deg) + 240deg)) rotateX(720deg) rotateY(360deg);
+  50% {
+    transform: rotateZ(calc(var(--spin-start, 0deg) + var(--spin-z-half, 130deg))) rotateX(var(--spin-x-half, 360deg)) rotateY(var(--spin-y-half, 180deg)) skewX(calc(var(--ribbon-skew, 0deg) * -1));
+  }
+
+  100% {
+    transform: rotateZ(calc(var(--spin-start, 0deg) + var(--spin-z, 260deg))) rotateX(var(--spin-x, 720deg)) rotateY(var(--spin-y, 360deg)) skewX(var(--ribbon-skew, 0deg));
   }
 }
 

@@ -1334,28 +1334,59 @@
 
   function addAwardRibbons(count, fillScreen = false) {
     if (desktopView && desktopView !== 'overlay') return;
-    const colors = ['#ff5b00', '#ffce32', '#e83d73', '#6f54d9', '#24bcb1', '#358be8', '#f5b64b'];
+    const colors = ['#ff4f3d', '#ff9f1c', '#ffd43b', '#2ec4b6', '#16a3ff', '#7b61ff', '#d94cff', '#ff4f91'];
+    const randomBetween = (min, max) => min + Math.random() * (max - min);
+    const signedRandom = (min, max) => randomBetween(min, max) * (Math.random() < 0.5 ? -1 : 1);
     const fragment = document.createDocumentFragment();
-    const room = Math.max(0, 360 - awardLayer.children.length);
+    const room = Math.max(0, 420 - awardLayer.children.length);
     for (let index = 0; index < Math.min(count, room); index += 1) {
       const fall = document.createElement('span');
       const sway = document.createElement('span');
       const ribbon = document.createElement('i');
-      const duration = 5 + Math.random() * 4;
+      const depth = Math.random();
+      const depthScale = 0.58 + depth * 0.78;
+      const duration = 9.2 - depth * 4.1 + randomBetween(-0.7, 1.1);
+      const spinDirection = Math.random() < 0.5 ? -1 : 1;
+      const driftA = signedRandom(12, 62) * depthScale;
+      const driftB = driftA + signedRandom(22, 105) * depthScale;
+      const driftC = driftB + signedRandom(20, 96) * depthScale;
+      const driftD = driftC + signedRandom(24, 118) * depthScale;
       fall.className = 'award-fall';
       sway.className = 'award-sway';
       ribbon.className = 'award-ribbon';
-      fall.style.left = `${Math.random() * 100}%`;
+      fall.style.left = `${randomBetween(-3, 103)}%`;
       fall.style.setProperty('--fall-duration', `${duration}s`);
       fall.style.setProperty('--fall-delay', fillScreen ? `${-Math.random() * duration}s` : '0s');
-      fall.style.setProperty('--ribbon-drift', `${(Math.random() - 0.5) * 220}px`);
-      sway.style.setProperty('--sway-duration', `${1.4 + Math.random() * 2}s`);
-      sway.style.setProperty('--sway-distance', `${18 + Math.random() * 46}px`);
-      ribbon.style.width = `${5 + Math.random() * 7}px`;
-      ribbon.style.height = `${18 + Math.random() * 34}px`;
-      ribbon.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-      ribbon.style.setProperty('--spin-duration', `${1 + Math.random() * 2.8}s`);
+      fall.style.setProperty('--ribbon-depth', `${Math.round((depth - 0.5) * 520)}px`);
+      fall.style.setProperty('--ribbon-opacity', `${0.42 + depth * 0.58}`);
+      fall.style.setProperty('--ribbon-blur', `${Math.max(0, 0.65 - depth * 0.8)}px`);
+      fall.style.setProperty('--drift-a', `${driftA}px`);
+      fall.style.setProperty('--drift-b', `${driftB}px`);
+      fall.style.setProperty('--drift-c', `${driftC}px`);
+      fall.style.setProperty('--drift-d', `${driftD}px`);
+      ['a', 'b', 'c', 'd', 'e'].forEach((step) => {
+        fall.style.setProperty(`--path-angle-${step}`, `${signedRandom(1, 8)}deg`);
+      });
+      sway.style.setProperty('--sway-duration', `${randomBetween(1.7, 4.2)}s`);
+      sway.style.setProperty('--sway-delay', `${-randomBetween(0, 3)}s`);
+      sway.style.setProperty('--sway-distance', `${randomBetween(8, 34) * depthScale}px`);
+      sway.style.setProperty('--sway-angle-a', `${signedRandom(2, 14)}deg`);
+      sway.style.setProperty('--sway-angle-b', `${signedRandom(2, 14)}deg`);
+      ribbon.style.width = `${randomBetween(5, 9) * depthScale}px`;
+      ribbon.style.height = `${randomBetween(28, 68) * depthScale}px`;
+      ribbon.style.setProperty('--ribbon-color', colors[Math.floor(Math.random() * colors.length)]);
+      ribbon.style.setProperty('--ribbon-radius', Math.random() < 0.22 ? '50%' : `${randomBetween(0.5, 2)}px`);
+      ribbon.style.setProperty('--depth-scale', depthScale);
+      ribbon.style.setProperty('--ribbon-skew', `${signedRandom(0, 9)}deg`);
+      ribbon.style.setProperty('--spin-duration', `${randomBetween(1.2, 3.8)}s`);
+      ribbon.style.setProperty('--spin-delay', `${-randomBetween(0, 3.5)}s`);
       ribbon.style.setProperty('--spin-start', `${Math.random() * 360}deg`);
+      ribbon.style.setProperty('--spin-z-half', `${spinDirection * randomBetween(80, 220)}deg`);
+      ribbon.style.setProperty('--spin-z', `${spinDirection * randomBetween(220, 520)}deg`);
+      ribbon.style.setProperty('--spin-x-half', `${spinDirection * randomBetween(120, 420)}deg`);
+      ribbon.style.setProperty('--spin-x', `${spinDirection * randomBetween(480, 940)}deg`);
+      ribbon.style.setProperty('--spin-y-half', `${-spinDirection * randomBetween(70, 300)}deg`);
+      ribbon.style.setProperty('--spin-y', `${-spinDirection * randomBetween(320, 780)}deg`);
       sway.appendChild(ribbon);
       fall.appendChild(sway);
       fragment.appendChild(fall);
@@ -1375,8 +1406,8 @@
     window.clearInterval(awardRainTimer);
     awardRainTimer = 0;
     if (awardModeEnabled && (!desktopView || desktopView === 'overlay')) {
-      addAwardRibbons(160, true);
-      awardRainTimer = window.setInterval(() => addAwardRibbons(12), 300);
+      addAwardRibbons(190, true);
+      awardRainTimer = window.setInterval(() => addAwardRibbons(10 + Math.floor(Math.random() * 7)), 320);
     } else {
       awardLayer.textContent = '';
     }
