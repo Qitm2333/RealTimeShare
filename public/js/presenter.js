@@ -1334,17 +1334,39 @@
 
   function addAwardRibbons(count, fillScreen = false) {
     if (desktopView && desktopView !== 'overlay') return;
-    const colors = ['#ff4f3d', '#ff9f1c', '#ffd43b', '#2ec4b6', '#16a3ff', '#7b61ff', '#d94cff', '#ff4f91'];
+    const ribbonPalettes = [
+      { weight: 34, color: '#e2aa2d' },
+      { weight: 27, color: '#f2c64b' },
+      { weight: 17, color: '#d38b24' },
+      { weight: 9, color: '#c83c43' },
+      { weight: 7, color: '#f0dfbd' },
+      { weight: 3, color: '#3f6f94' },
+      { weight: 3, color: '#3f806f' }
+    ];
     const randomBetween = (min, max) => min + Math.random() * (max - min);
     const signedRandom = (min, max) => randomBetween(min, max) * (Math.random() < 0.5 ? -1 : 1);
+    const chooseRibbonLength = () => {
+      const roll = Math.random();
+      if (roll < 0.3) return randomBetween(18, 29);
+      if (roll < 0.82) return randomBetween(29, 44);
+      return randomBetween(44, 58);
+    };
+    const choosePalette = () => {
+      let cursor = Math.random() * 100;
+      return ribbonPalettes.find((palette) => {
+        cursor -= palette.weight;
+        return cursor <= 0;
+      }) || ribbonPalettes[0];
+    };
     const fragment = document.createDocumentFragment();
-    const room = Math.max(0, 420 - awardLayer.children.length);
+    const room = Math.max(0, 330 - awardLayer.children.length);
     for (let index = 0; index < Math.min(count, room); index += 1) {
       const fall = document.createElement('span');
       const sway = document.createElement('span');
       const ribbon = document.createElement('i');
+      const palette = choosePalette();
       const depth = Math.random();
-      const depthScale = 0.58 + depth * 0.78;
+      const depthScale = 0.62 + depth * 0.7;
       const duration = 9.2 - depth * 4.1 + randomBetween(-0.7, 1.1);
       const spinDirection = Math.random() < 0.5 ? -1 : 1;
       const driftA = signedRandom(12, 62) * depthScale;
@@ -1372,10 +1394,10 @@
       sway.style.setProperty('--sway-distance', `${randomBetween(8, 34) * depthScale}px`);
       sway.style.setProperty('--sway-angle-a', `${signedRandom(2, 14)}deg`);
       sway.style.setProperty('--sway-angle-b', `${signedRandom(2, 14)}deg`);
-      ribbon.style.width = `${randomBetween(5, 9) * depthScale}px`;
-      ribbon.style.height = `${randomBetween(28, 68) * depthScale}px`;
-      ribbon.style.setProperty('--ribbon-color', colors[Math.floor(Math.random() * colors.length)]);
-      ribbon.style.setProperty('--ribbon-radius', Math.random() < 0.22 ? '50%' : `${randomBetween(0.5, 2)}px`);
+      ribbon.style.width = `${randomBetween(5.5, 9.5) * depthScale}px`;
+      ribbon.style.height = `${chooseRibbonLength() * depthScale}px`;
+      ribbon.style.setProperty('--ribbon-color', palette.color);
+      ribbon.style.setProperty('--ribbon-radius', `${randomBetween(0.4, 1.1)}px`);
       ribbon.style.setProperty('--depth-scale', depthScale);
       ribbon.style.setProperty('--ribbon-skew', `${signedRandom(0, 9)}deg`);
       ribbon.style.setProperty('--spin-duration', `${randomBetween(1.2, 3.8)}s`);
@@ -1406,8 +1428,8 @@
     window.clearInterval(awardRainTimer);
     awardRainTimer = 0;
     if (awardModeEnabled && (!desktopView || desktopView === 'overlay')) {
-      addAwardRibbons(190, true);
-      awardRainTimer = window.setInterval(() => addAwardRibbons(10 + Math.floor(Math.random() * 7)), 320);
+      addAwardRibbons(150, true);
+      awardRainTimer = window.setInterval(() => addAwardRibbons(8 + Math.floor(Math.random() * 5)), 340);
     } else {
       awardLayer.textContent = '';
     }

@@ -581,11 +581,10 @@ body {
 .award-ribbon {
   display: block;
   box-sizing: border-box;
-  border-radius: var(--ribbon-radius, 1px);
-  background:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.18), transparent 24%, rgba(255, 255, 255, 0.42) 50%, transparent 72%, rgba(0, 0, 0, 0.12)),
-    var(--ribbon-color, #ffce32);
-  box-shadow: 0 2px calc(3px * var(--depth-scale, 1)) rgba(0, 0, 0, 0.22);
+  border: 0;
+  border-radius: var(--ribbon-radius, 0.8px);
+  background: var(--ribbon-color, #e3ac2c);
+  box-shadow: 0 1px calc(2px * var(--depth-scale, 1)) rgba(45, 36, 18, 0.12);
   transform-origin: 50% 50%;
   backface-visibility: visible;
   will-change: transform;
