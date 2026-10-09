@@ -26,6 +26,7 @@
   const connectionStatus = document.getElementById('connectionStatus');
   const danmuLayer = document.getElementById('danmuLayer');
   const effectLayer = document.getElementById('effectLayer');
+  const awardLayer = document.getElementById('awardLayer');
   const toast = document.getElementById('toast');
   const giftCount = document.getElementById('giftCount');
   const topGiftIcon = document.getElementById('topGiftIcon');
@@ -47,6 +48,7 @@
   const qrHint = document.getElementById('qrHint');
   const danmuToggle = document.getElementById('danmuToggle');
   const giftToggle = document.getElementById('giftToggle');
+  const awardToggle = document.getElementById('awardToggle');
   const pollToggle = document.getElementById('pollToggle');
   const pollPanel = document.getElementById('pollPanel');
   const pollClose = document.getElementById('pollClose');
@@ -86,6 +88,7 @@
   const giftEffectLimit = document.getElementById('giftEffectLimit');
   const danmuBlockedWords = document.getElementById('danmuBlockedWords');
   const danmuModeSelect = document.getElementById('danmuMode');
+  const quickPhraseSettings = document.getElementById('quickPhraseSettings');
   const settingsSave = document.getElementById('settingsSave');
   const settingsStatus = document.getElementById('settingsStatus');
   const presenterLotteryDialog = document.getElementById('presenterLotteryDialog');
@@ -146,6 +149,7 @@
   const giftEffectsEnabledKey = 'live-share-gift-effects-enabled';
   const danmuEffectsEnabledKey = 'live-share-danmu-effects-enabled';
   const giftEffectLimitKey = 'live-share-gift-effect-limit';
+  const awardModeEnabledKey = 'live-share-award-mode-enabled';
   const trackBusyUntil = Array.from({ length: trackCount }, () => 0);
   const recentEffects = [];
   let giftList = [];
@@ -157,6 +161,8 @@
   let danmuEffectsEnabled = localStorage.getItem(danmuEffectsEnabledKey) !== 'false';
   let maxGiftEffects = normalizeGiftEffectLimit(localStorage.getItem(giftEffectLimitKey));
   let danmuMode = 'free';
+  let awardModeEnabled = localStorage.getItem(awardModeEnabledKey) === 'true';
+  let awardRainTimer = 0;
   let connectionText = '未连接';
   let audienceCount = 0;
   let lastStats;
@@ -770,11 +776,16 @@
       const response = await fetch('/api/quick-phrases');
       if (!response.ok) throw new Error('Quick phrase configuration failed');
       const data = await response.json();
-      const phrases = Array.isArray(data.phrases) ? data.phrases : [];
-      quickPhrasesById = Object.fromEntries(phrases.map((phrase) => [phrase.id, phrase]));
+      applyQuickPhrases(data.phrases);
     } catch (error) {
       quickPhrasesById = {};
     }
+  }
+
+  function applyQuickPhrases(phrases) {
+    const list = Array.isArray(phrases) ? phrases : [];
+    quickPhrasesById = Object.fromEntries(list.map((phrase) => [phrase.id, phrase]));
+    if (quickPhraseSettings) quickPhraseSettings.value = list.map((phrase) => phrase.text).join('\n');
   }
 
   function applyGifts(nextGifts) {
@@ -1026,7 +1037,6 @@
     }
 
     const item = document.createElement('div');
-    const image = document.createElement('img');
     const track = chooseTrack();
     const layerHeight = danmuLayer.clientHeight;
     const trackHeight = Math.max(46, Math.floor(layerHeight / trackCount));
@@ -1035,9 +1045,15 @@
     item.className = 'quick-danmu';
     item.style.top = `${top}px`;
     item.style.animationDuration = `${8 + Math.random() * 2.5}s`;
-    image.src = phrase.image;
-    image.alt = phrase.text;
-    item.appendChild(image);
+    if (phrase.image) {
+      const image = document.createElement('img');
+      image.src = phrase.image;
+      image.alt = phrase.text;
+      item.appendChild(image);
+    } else {
+      item.classList.add('is-text');
+      item.textContent = phrase.text;
+    }
     danmuLayer.appendChild(item);
     item.addEventListener('animationend', () => item.remove(), { once: true });
     window.setTimeout(() => item.remove(), 11000);
@@ -1316,6 +1332,56 @@
     }
   }
 
+  function addAwardRibbons(count, fillScreen = false) {
+    if (desktopView && desktopView !== 'overlay') return;
+    const colors = ['#ff5b00', '#ffce32', '#e83d73', '#6f54d9', '#24bcb1', '#358be8', '#f5b64b'];
+    const fragment = document.createDocumentFragment();
+    const room = Math.max(0, 360 - awardLayer.children.length);
+    for (let index = 0; index < Math.min(count, room); index += 1) {
+      const fall = document.createElement('span');
+      const sway = document.createElement('span');
+      const ribbon = document.createElement('i');
+      const duration = 5 + Math.random() * 4;
+      fall.className = 'award-fall';
+      sway.className = 'award-sway';
+      ribbon.className = 'award-ribbon';
+      fall.style.left = `${Math.random() * 100}%`;
+      fall.style.setProperty('--fall-duration', `${duration}s`);
+      fall.style.setProperty('--fall-delay', fillScreen ? `${-Math.random() * duration}s` : '0s');
+      fall.style.setProperty('--ribbon-drift', `${(Math.random() - 0.5) * 220}px`);
+      sway.style.setProperty('--sway-duration', `${1.4 + Math.random() * 2}s`);
+      sway.style.setProperty('--sway-distance', `${18 + Math.random() * 46}px`);
+      ribbon.style.width = `${5 + Math.random() * 7}px`;
+      ribbon.style.height = `${18 + Math.random() * 34}px`;
+      ribbon.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      ribbon.style.setProperty('--spin-duration', `${1 + Math.random() * 2.8}s`);
+      ribbon.style.setProperty('--spin-start', `${Math.random() * 360}deg`);
+      sway.appendChild(ribbon);
+      fall.appendChild(sway);
+      fragment.appendChild(fall);
+      fall.addEventListener('animationend', (event) => {
+        if (event.target === fall) fall.remove();
+      });
+    }
+    awardLayer.appendChild(fragment);
+  }
+
+  function setAwardModeEnabled(enabled) {
+    awardModeEnabled = Boolean(enabled);
+    localStorage.setItem(awardModeEnabledKey, String(awardModeEnabled));
+    awardToggle.textContent = awardModeEnabled ? '颁奖中 · 停止' : '颁奖';
+    awardToggle.classList.toggle('is-on', awardModeEnabled);
+    awardToggle.setAttribute('aria-pressed', String(awardModeEnabled));
+    window.clearInterval(awardRainTimer);
+    awardRainTimer = 0;
+    if (awardModeEnabled && (!desktopView || desktopView === 'overlay')) {
+      addAwardRibbons(160, true);
+      awardRainTimer = window.setInterval(() => addAwardRibbons(12), 300);
+    } else {
+      awardLayer.textContent = '';
+    }
+  }
+
   function setDanmuEffectsEnabled(enabled) {
     danmuEffectsEnabled = Boolean(enabled);
     localStorage.setItem(danmuEffectsEnabledKey, String(danmuEffectsEnabled));
@@ -1376,9 +1442,14 @@
       .split(/[\n,，、]+/)
       .map((word) => word.replace(/\s+/g, ' ').trim())
       .filter(Boolean);
+    const phrases = quickPhraseSettings.value.split(/\r?\n/).map((text) => text.trim()).filter(Boolean);
+    if (!phrases.length || phrases.length > 30 || phrases.some((text) => text.length > 40)) {
+      setSettingsStatus('请填写 1–30 条预设弹幕，每条最多 40 字', 'is-error');
+      return;
+    }
     settingsSave.disabled = true;
     try {
-      const [filterResponse, modeResponse] = await Promise.all([
+      const [filterResponse, modeResponse, phrasesResponse] = await Promise.all([
         fetch('/api/danmu-filter', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -1388,13 +1459,19 @@
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mode: danmuModeSelect.value })
+        }),
+        fetch('/api/quick-phrases', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phrases })
         })
       ]);
-      if (!filterResponse.ok || !modeResponse.ok) throw new Error('Interaction settings save failed');
+      if (!filterResponse.ok || !modeResponse.ok || !phrasesResponse.ok) throw new Error('Interaction settings save failed');
       const data = await filterResponse.json();
       const modeData = await modeResponse.json();
       danmuBlockedWords.value = Array.isArray(data.words) ? data.words.join('\n') : '';
       applyDanmuMode(modeData.mode);
+      applyQuickPhrases((await phrasesResponse.json()).phrases);
       setSettingsStatus('设置已保存', 'is-success');
     } catch (error) {
       setSettingsStatus('互动设置保存失败', 'is-error');
@@ -1481,6 +1558,10 @@
 
       if (message.type === 'config' && message.status === 'danmu-mode') {
         applyDanmuMode(message.mode);
+      }
+
+      if (message.type === 'config' && message.status === 'quick-phrases') {
+        applyQuickPhrases(message.phrases);
       }
 
       if (message.type === 'document') {
@@ -1724,6 +1805,7 @@
     setQrHint('二维码生成失败，请检查地址后重试。', 'is-warning');
   });
   giftToggle.addEventListener('click', () => setGiftEffectsEnabled(!giftEffectsEnabled));
+  awardToggle.addEventListener('click', () => setAwardModeEnabled(!awardModeEnabled));
   settingsSave.addEventListener('click', saveSettings);
   pollMaxSelections.addEventListener('pointerdown', (event) => event.stopPropagation());
   pollMaxSelections.addEventListener('click', (event) => event.stopPropagation());
@@ -1734,10 +1816,12 @@
     if (event.key === giftEffectsEnabledKey) setGiftEffectsEnabled(event.newValue !== 'false');
     if (event.key === danmuEffectsEnabledKey) setDanmuEffectsEnabled(event.newValue !== 'false');
     if (event.key === giftEffectLimitKey) setGiftEffectLimit(event.newValue);
+    if (event.key === awardModeEnabledKey) setAwardModeEnabled(event.newValue === 'true');
   });
   setDanmuEffectsEnabled(danmuEffectsEnabled);
   setGiftEffectsEnabled(giftEffectsEnabled);
   setGiftEffectLimit(maxGiftEffects);
+  setAwardModeEnabled(awardModeEnabled);
   revealFullscreenUi();
 
   if (desktopView === 'overlay' && window.desktopOverlay?.onToolbarVisibility) {

@@ -135,16 +135,21 @@
 
     quickPhraseList.forEach((phrase) => {
       const button = document.createElement('button');
-      const image = document.createElement('img');
       button.className = 'quick-phrase-button';
       button.type = 'button';
       button.setAttribute('aria-label', phrase.text);
       button.title = phrase.text;
       button.disabled = true;
-      image.src = phrase.image;
-      image.alt = '';
-      image.loading = 'lazy';
-      button.appendChild(image);
+      if (phrase.image) {
+        const image = document.createElement('img');
+        image.src = phrase.image;
+        image.alt = '';
+        image.loading = 'lazy';
+        button.appendChild(image);
+      } else {
+        button.classList.add('is-text');
+        button.textContent = phrase.text;
+      }
       button.addEventListener('click', () => sendQuickPhrase(phrase));
       quickPhraseGrid.appendChild(button);
       quickPhraseControls.push(button);
@@ -422,6 +427,14 @@
 
       if (message.type === 'config' && message.status === 'danmu-mode') {
         applyDanmuMode(message.mode);
+      }
+
+      if (message.type === 'config' && message.status === 'quick-phrases') {
+        quickPhraseList = Array.isArray(message.phrases) ? message.phrases : [];
+        renderQuickPhraseButtons();
+        quickPhraseControls.forEach((control) => {
+          control.disabled = !isConnected() || !identityConfirmed;
+        });
       }
 
       if (message.type === 'system' && message.status === 'danmu-mode') {

@@ -16,4 +16,5 @@ data/lottery-history.json
 data/poll-state.json
 data/danmu-filter.json
 data/danmu-mode.json
+data/quick-phrases.json
 data/*.tmp

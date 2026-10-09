@@ -28,8 +28,11 @@ const interactionStatePath = path.join(dataDir, 'interaction-state.json');
 const lotteryHistoryPath = path.join(dataDir, 'lottery-history.json');
 const danmuFilterPath = path.join(dataDir, 'danmu-filter.json');
 const danmuModePath = path.join(dataDir, 'danmu-mode.json');
+const quickPhrasesPath = path.join(dataDir, 'quick-phrases.json');
 
-const quickPhrases = [
+fs.mkdirSync(dataDir, { recursive: true });
+
+const defaultQuickPhrases = [
   { id: 'sustain-iteration', text: '持续迭代', image: '/assets/quick-phrases/sustain-iteration.png' },
   { id: 'think-different', text: '想不一样，做不一样', image: '/assets/quick-phrases/think-different.png' },
   { id: 'capture-possibility', text: '捕捉更多可能', image: '/assets/quick-phrases/capture-possibility.png' },
@@ -41,7 +44,8 @@ const quickPhrases = [
   { id: 'think-do-more', text: '多想一点，多做一点', image: '/assets/quick-phrases/think-do-more.png' },
   { id: 'new-angle', text: '换个角度再想想', image: '/assets/quick-phrases/new-angle.png' }
 ];
-const quickPhrasesById = new Map(quickPhrases.map((phrase) => [phrase.id, phrase]));
+let quickPhrases = loadQuickPhrases();
+let quickPhrasesById = new Map(quickPhrases.map((phrase) => [phrase.id, phrase]));
 
 const sensoryAdjectives = [
   '美味的', '香甜的', '酥脆的', '冰凉的', '温热的', '柔软的', '清新的', '辛辣的',
@@ -53,8 +57,6 @@ const sensoryObjects = [
   '海盐', '可颂', '草莓', '雪糕', '咖啡', '橘子', '薯片', '葡萄',
   '芒果', '奶酪', '棉花糖', '小夜灯'
 ];
-
-fs.mkdirSync(dataDir, { recursive: true });
 
 let gifts = loadGifts();
 let validEffectIds = new Set(gifts.map((gift) => gift.id));
@@ -136,6 +138,45 @@ function persistDanmuMode() {
   const tempPath = `${danmuModePath}.tmp`;
   fs.writeFileSync(tempPath, JSON.stringify({ mode: danmuMode }, null, 2));
   fs.renameSync(tempPath, danmuModePath);
+}
+
+function normalizeQuickPhrases(value) {
+  const defaultByText = new Map(defaultQuickPhrases.map((phrase) => [phrase.text.toLocaleLowerCase(), phrase]));
+  const rawPhrases = Array.isArray(value) ? value : [];
+  const seen = new Set();
+  return rawPhrases
+    .map((phrase) => cleanString(typeof phrase === 'string' ? phrase : phrase?.text, '', 40))
+    .filter((text) => {
+      const key = text.toLocaleLowerCase();
+      if (!text || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 30)
+    .map((text) => {
+      const original = defaultByText.get(text.toLocaleLowerCase());
+      return original || {
+        id: `custom-${crypto.createHash('sha256').update(text).digest('hex').slice(0, 12)}`,
+        text,
+        image: ''
+      };
+    });
+}
+
+function loadQuickPhrases() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(quickPhrasesPath, 'utf8'));
+    const phrases = normalizeQuickPhrases(parsed?.phrases);
+    return phrases.length ? phrases : defaultQuickPhrases.slice();
+  } catch (error) {
+    return defaultQuickPhrases.slice();
+  }
+}
+
+function persistQuickPhrases() {
+  const tempPath = `${quickPhrasesPath}.tmp`;
+  fs.writeFileSync(tempPath, JSON.stringify({ phrases: quickPhrases.map((phrase) => phrase.text) }, null, 2));
+  fs.renameSync(tempPath, quickPhrasesPath);
 }
 
 function createUserId() {
@@ -590,7 +631,7 @@ function sendPollError(ws, reason, poll = activePoll) {
 }
 
 function broadcastStats() {
-  broadcast({ type: 'stats', stats: getPublicStatsPayload() });
+  sendToRole('presenter', { type: 'stats', stats: getPublicStatsPayload() });
   broadcastToPresenters({ type: 'interaction-ranking', stats: getPresenterStatsPayload() });
 }
 
@@ -869,6 +910,23 @@ app.get('/api/quick-phrases', (req, res) => {
   res.json({ phrases: quickPhrases });
 });
 
+app.put('/api/quick-phrases', requirePresenter, (req, res) => {
+  const phrases = normalizeQuickPhrases(req.body?.phrases);
+  if (!phrases.length) {
+    res.status(400).json({ error: 'quick_phrases_required' });
+    return;
+  }
+  quickPhrases = phrases;
+  quickPhrasesById = new Map(quickPhrases.map((phrase) => [phrase.id, phrase]));
+  try {
+    persistQuickPhrases();
+    broadcast({ type: 'config', status: 'quick-phrases', phrases: quickPhrases });
+    res.json({ ok: true, phrases: quickPhrases });
+  } catch (error) {
+    res.status(500).json({ error: 'quick_phrases_save_failed' });
+  }
+});
+
 app.get('/api/audience-url', requirePresenter, (req, res) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
   const requestHost = req.headers.host;
@@ -948,8 +1006,19 @@ gifts.forEach((gift) => {
   if (!Object.prototype.hasOwnProperty.call(stats.giftById, gift.id)) stats.giftById[gift.id] = 0;
 });
 function getUserCooldown(userId) {
-  if (!userCooldowns.has(userId)) userCooldowns.set(userId, { danmuAt: 0, quickDanmuAt: 0, effectAt: 0 });
+  if (!userCooldowns.has(userId)) userCooldowns.set(userId, {});
   return userCooldowns.get(userId);
+}
+
+function consumeRateLimit(cooldown, scope, intervalMs, capacity, now) {
+  const state = cooldown[scope] || { tokens: capacity, refilledAt: now };
+  const elapsed = Math.max(0, now - state.refilledAt);
+  state.tokens = Math.min(capacity, state.tokens + elapsed / intervalMs);
+  state.refilledAt = now;
+  cooldown[scope] = state;
+  if (state.tokens < 1) return false;
+  state.tokens -= 1;
+  return true;
 }
 
 function recordInteraction(ws, message) {
@@ -1067,6 +1136,7 @@ wss.on('connection', (ws, req) => {
   ws.send(JSON.stringify({ type: 'stats', stats: getPublicStatsPayload() }));
   ws.send(JSON.stringify({ type: 'document', document: getDocumentPayload() }));
   ws.send(JSON.stringify({ type: 'config', status: 'gifts', gifts }));
+  ws.send(JSON.stringify({ type: 'config', status: 'quick-phrases', phrases: quickPhrases }));
   ws.send(JSON.stringify({ type: 'config', status: 'danmu-mode', mode: danmuMode }));
   if (ws.presenterAuthorized) ws.send(JSON.stringify({ type: 'config', status: 'danmu-filter', words: blockedWords.slice() }));
   broadcastAudienceCount();
@@ -1364,17 +1434,17 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
-    if (message.type === 'danmu' && now - cooldown.danmuAt < DANMU_COOLDOWN_MS) {
+    if (message.type === 'danmu' && !consumeRateLimit(cooldown, 'danmu', DANMU_COOLDOWN_MS, 2, now)) {
       ws.send(JSON.stringify({ type: 'system', status: 'cooldown', scope: 'danmu' }));
       return;
     }
 
-    if (message.type === 'quick-danmu' && now - cooldown.quickDanmuAt < QUICK_DANMU_COOLDOWN_MS) {
+    if (message.type === 'quick-danmu' && !consumeRateLimit(cooldown, 'quickDanmu', QUICK_DANMU_COOLDOWN_MS, 2, now)) {
       ws.send(JSON.stringify({ type: 'system', status: 'cooldown', scope: 'quick-danmu' }));
       return;
     }
 
-    if (message.type === 'effect' && now - cooldown.effectAt < EFFECT_COOLDOWN_MS) {
+    if (message.type === 'effect' && !consumeRateLimit(cooldown, 'effect', EFFECT_COOLDOWN_MS, 10, now)) {
       ws.send(JSON.stringify({ type: 'system', status: 'cooldown', scope: 'effect' }));
       return;
     }
@@ -1387,21 +1457,9 @@ wss.on('connection', (ws, req) => {
       }
     }
 
-    if (message.type === 'danmu') {
-      cooldown.danmuAt = now;
-    }
-
-    if (message.type === 'quick-danmu') {
-      cooldown.quickDanmuAt = now;
-    }
-
-    if (message.type === 'effect') {
-      cooldown.effectAt = now;
-    }
-
     recordInteraction(ws, message);
     if (message.type === 'effect') message.count = stats.giftById[message.effect];
-    broadcast(message);
+    sendToRole('presenter', message);
     broadcastStats();
   });
 

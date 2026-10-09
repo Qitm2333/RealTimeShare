@@ -30,6 +30,7 @@
           <button id="pollToggle" class="secondary-button" type="button" aria-haspopup="dialog" aria-expanded="false">投票</button>
           <button id="danmuToggle" class="gift-toggle is-on" type="button" aria-pressed="true">弹幕开</button>
           <button id="giftToggle" class="gift-toggle is-on" type="button" aria-pressed="true">礼物开</button>
+          <button id="awardToggle" class="gift-toggle" type="button" aria-pressed="false">颁奖</button>
           <div class="pdf-reader-actions" aria-label="PDF 阅读控制">
             <button id="pdfPrevious" type="button" aria-label="上一页">‹</button>
             <span class="page-indicator"><span id="pdfPageNumber">1</span> / <span id="pdfPageCount">0</span><input id="pdfPageInput" class="visually-hidden" type="number" min="1" value="1" aria-hidden="true" tabindex="-1" /></span>
@@ -50,6 +51,7 @@
 
       <div id="danmuLayer" class="danmu-layer" aria-live="polite"></div>
       <div id="effectLayer" class="effect-layer" aria-live="polite"></div>
+      <div id="awardLayer" class="award-layer" aria-hidden="true"></div>
       <aside class="scoreboard" aria-label="互动统计">
         <div class="score-item gift-score">
           <span class="score-icon">🎁</span>
@@ -184,6 +186,11 @@
                 <option value="free">自由弹幕</option>
                 <option value="preset">预设弹幕</option>
               </select>
+            </label>
+            <label class="settings-field">
+              <span>预设弹幕</span>
+              <small>每行一条，最多 30 条。预设模式下观众只能发送这里的内容。</small>
+              <textarea id="quickPhraseSettings" rows="7" maxlength="1500" placeholder="例如：太棒了！\n恭喜获奖！"></textarea>
             </label>
             <button id="settingsSave" class="primary-button" type="button">保存设置</button>
             <p id="settingsStatus" class="settings-status" aria-live="polite"></p>
