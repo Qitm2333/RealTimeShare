@@ -368,11 +368,14 @@ body {
 .settings-field { display: grid; gap: 6px; color: #1d1d1f; font-size: 13px; font-weight: 800; }
 .settings-field small { color: #6e6e73; font-size: 12px; font-weight: 500; line-height: 1.45; }
 .settings-field input,
-.settings-field textarea { width: 100%; box-sizing: border-box; border: 1px solid #d2d2d7; border-radius: 7px; background: #fff; color: #1d1d1f; font: inherit; font-weight: 500; outline: none; }
-.settings-field input { min-height: 40px; padding: 0 10px; }
+.settings-field textarea,
+.settings-field select { width: 100%; box-sizing: border-box; border: 1px solid #d2d2d7; border-radius: 7px; background: #fff; color: #1d1d1f; font: inherit; font-weight: 500; outline: none; }
+.settings-field input,
+.settings-field select { min-height: 40px; padding: 0 10px; }
 .settings-field textarea { min-height: 120px; padding: 10px; resize: vertical; }
 .settings-field input:focus,
-.settings-field textarea:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-ring); }
+.settings-field textarea:focus,
+.settings-field select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-ring); }
 .settings-status { min-height: 18px; margin: 0; color: var(--brand-strong); font-size: 12px; font-weight: 700; }
 .settings-status.is-error { color: #b42318; }
 .ranking-summary,.lottery-summary { margin-bottom:10px; color:#6e6e73; font-size:12px; }

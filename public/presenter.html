@@ -10,8 +10,8 @@
         if (view) document.documentElement.dataset.desktopView = view;
       })();
     </script>
-    <link rel="stylesheet" href="/css/presenter.css?v=20261008-1" />
-    <link rel="stylesheet" href="/css/desktop-presenter.css?v=20261008-1" />
+    <link rel="stylesheet" href="/css/presenter.css?v=1.7" />
+    <link rel="stylesheet" href="/css/desktop-presenter.css?v=1.7" />
   </head>
   <body>
     <main class="stage">
@@ -177,6 +177,14 @@
               <small>每行或用逗号分隔一个词，命中后不会显示，也不会计入互动统计。</small>
               <textarea id="danmuBlockedWords" rows="6" maxlength="8000" placeholder="例如：广告\n刷屏"></textarea>
             </label>
+            <label class="settings-field">
+              <span>弹幕模式</span>
+              <small>自由模式允许观众输入内容；预设模式只允许点击快捷用语，适合正式活动控场。</small>
+              <select id="danmuMode" aria-label="弹幕模式">
+                <option value="free">自由弹幕</option>
+                <option value="preset">预设弹幕</option>
+              </select>
+            </label>
             <button id="settingsSave" class="primary-button" type="button">保存设置</button>
             <p id="settingsStatus" class="settings-status" aria-live="polite"></p>
           </div>
@@ -197,6 +205,6 @@
     </div>
 
     <script src="/js/pdf-reader.js?v=20260916-3"></script>
-    <script src="/js/presenter.js?v=20261008-1"></script>
+    <script src="/js/presenter.js?v=1.7"></script>
   </body>
 </html>

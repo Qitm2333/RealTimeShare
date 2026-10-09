@@ -3,8 +3,11 @@
   const nickname = document.getElementById('nickname');
   const messageInput = document.getElementById('messageInput');
   const sendButton = document.getElementById('sendButton');
+  const freeDanmuComposer = document.getElementById('freeDanmuComposer');
+  const danmuModeHint = document.getElementById('danmuModeHint');
   const quickPhraseGrid = document.getElementById('quickPhraseGrid');
   const effectGrid = document.getElementById('effectGrid');
+  const quickPhraseTitle = document.getElementById('quickPhraseTitle');
   const interactionPanel = document.getElementById('interactionPanel');
   const pollDialog = document.getElementById('pollDialog');
   const pollQuestion = document.getElementById('pollQuestion');
@@ -49,6 +52,7 @@
   let identitySubmitting = false;
   let resetRequired = false;
   let randomNicknameRequested = false;
+  let danmuMode = 'free';
   const sensoryAdjectives = ['美味的', '香甜的', '酥脆的', '冰凉的', '温热的', '柔软的', '清新的', '辛辣的', '酸爽的', '浓郁的', '丝滑的', '闪亮的', '轻盈的', '热烈的', '安静的', '迷人的', '巧克力味的', '薄荷味的', '奶油香的', '阳光晒过的'];
   const sensoryObjects = ['烧鸡', '西瓜', '巧克力', '柠檬', '爆米花', '云朵', '月亮', '蜜桃', '海盐', '可颂', '草莓', '雪糕', '咖啡', '橘子', '薯片', '葡萄', '芒果', '奶酪', '棉花糖', '小夜灯'];
 
@@ -203,6 +207,16 @@
     connectionStatus.className = `status ${className || ''}`.trim();
   }
 
+  function applyDanmuMode(mode) {
+    danmuMode = mode === 'preset' ? 'preset' : 'free';
+    const presetMode = danmuMode === 'preset';
+    freeDanmuComposer.hidden = presetMode;
+    if (presetMode) messageInput.value = '';
+    quickPhraseTitle.textContent = presetMode ? '预设弹幕' : '快捷用语';
+    danmuModeHint.textContent = presetMode ? '仅可发送安全预设用语' : '点击发送预设弹幕';
+    quickPhraseGrid.setAttribute('aria-label', presetMode ? '预设弹幕列表' : '快捷用语列表');
+  }
+
   function isConnected() {
     return websocket?.readyState === WebSocket.OPEN;
   }
@@ -331,6 +345,10 @@
   }
 
   function send(payload, options = {}) {
+    if (payload?.type === 'danmu' && danmuMode === 'preset') {
+      setStatus('当前仅允许预设弹幕', '');
+      return;
+    }
     if (!identityConfirmed) {
       showIdentityDialog();
       return;
@@ -400,6 +418,15 @@
 
       if (message.type === 'system' && message.status === 'cooldown' && message.scope === 'quick-danmu') {
         setStatus('快捷用语冷却中', '');
+      }
+
+      if (message.type === 'config' && message.status === 'danmu-mode') {
+        applyDanmuMode(message.mode);
+      }
+
+      if (message.type === 'system' && message.status === 'danmu-mode') {
+        applyDanmuMode(message.mode);
+        setStatus('当前仅允许预设弹幕', '');
       }
 
       if (message.type === 'identity' && message.user) {
@@ -493,6 +520,7 @@
   pollSubmit.addEventListener('click', submitVote);
 
   nickname.value = identity.nickname || '';
+  applyDanmuMode('free');
   updateIdentityDialogState();
   if (identityReady) {
     identityChip.hidden = false;

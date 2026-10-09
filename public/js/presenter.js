@@ -85,6 +85,7 @@
   const lotteryRollerName = document.getElementById('lotteryRollerName');
   const giftEffectLimit = document.getElementById('giftEffectLimit');
   const danmuBlockedWords = document.getElementById('danmuBlockedWords');
+  const danmuModeSelect = document.getElementById('danmuMode');
   const settingsSave = document.getElementById('settingsSave');
   const settingsStatus = document.getElementById('settingsStatus');
   const presenterLotteryDialog = document.getElementById('presenterLotteryDialog');
@@ -155,6 +156,7 @@
   let giftEffectsEnabled = localStorage.getItem(giftEffectsEnabledKey) !== 'false';
   let danmuEffectsEnabled = localStorage.getItem(danmuEffectsEnabledKey) !== 'false';
   let maxGiftEffects = normalizeGiftEffectLimit(localStorage.getItem(giftEffectLimitKey));
+  let danmuMode = 'free';
   let connectionText = '未连接';
   let audienceCount = 0;
   let lastStats;
@@ -1352,6 +1354,22 @@
     }
   }
 
+  function applyDanmuMode(mode) {
+    danmuMode = mode === 'preset' ? 'preset' : 'free';
+    if (danmuModeSelect) danmuModeSelect.value = danmuMode;
+  }
+
+  async function loadDanmuMode() {
+    try {
+      const response = await fetch('/api/danmu-mode');
+      if (!response.ok) throw new Error('Danmu mode loading failed');
+      const data = await response.json();
+      applyDanmuMode(data.mode);
+    } catch (error) {
+      setSettingsStatus('弹幕模式加载失败', 'is-error');
+    }
+  }
+
   async function saveSettings() {
     setGiftEffectLimit(giftEffectLimit.value);
     const words = danmuBlockedWords.value
@@ -1360,17 +1378,26 @@
       .filter(Boolean);
     settingsSave.disabled = true;
     try {
-      const response = await fetch('/api/danmu-filter', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ words })
-      });
-      if (!response.ok) throw new Error('Danmu filter save failed');
-      const data = await response.json();
+      const [filterResponse, modeResponse] = await Promise.all([
+        fetch('/api/danmu-filter', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ words })
+        }),
+        fetch('/api/danmu-mode', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode: danmuModeSelect.value })
+        })
+      ]);
+      if (!filterResponse.ok || !modeResponse.ok) throw new Error('Interaction settings save failed');
+      const data = await filterResponse.json();
+      const modeData = await modeResponse.json();
       danmuBlockedWords.value = Array.isArray(data.words) ? data.words.join('\n') : '';
+      applyDanmuMode(modeData.mode);
       setSettingsStatus('设置已保存', 'is-success');
     } catch (error) {
-      setSettingsStatus('屏蔽词保存失败', 'is-error');
+      setSettingsStatus('互动设置保存失败', 'is-error');
     } finally {
       settingsSave.disabled = false;
     }
@@ -1450,6 +1477,10 @@
 
       if (message.type === 'config' && message.status === 'danmu-filter') {
         danmuBlockedWords.value = Array.isArray(message.words) ? message.words.join('\n') : '';
+      }
+
+      if (message.type === 'config' && message.status === 'danmu-mode') {
+        applyDanmuMode(message.mode);
       }
 
       if (message.type === 'document') {
@@ -1564,6 +1595,7 @@
       await loadDocument();
       await loadAudienceUrls();
       await loadDanmuFilter();
+      await loadDanmuMode();
       connectWebSocket();
     } catch (error) {
       passwordError.hidden = false;
@@ -1729,6 +1761,7 @@
       await loadDocument();
       await loadAudienceUrls();
       await loadDanmuFilter();
+      await loadDanmuMode();
     }
     if (authenticated) connectWebSocket();
   });

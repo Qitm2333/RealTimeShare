@@ -27,6 +27,7 @@ const usersPath = path.join(dataDir, 'users.json');
 const interactionStatePath = path.join(dataDir, 'interaction-state.json');
 const lotteryHistoryPath = path.join(dataDir, 'lottery-history.json');
 const danmuFilterPath = path.join(dataDir, 'danmu-filter.json');
+const danmuModePath = path.join(dataDir, 'danmu-mode.json');
 
 const quickPhrases = [
   { id: 'sustain-iteration', text: '持续迭代', image: '/assets/quick-phrases/sustain-iteration.png' },
@@ -62,6 +63,7 @@ let documentState = readDocumentState();
 const users = loadUsers();
 const userCooldowns = new Map();
 let blockedWords = loadBlockedWords();
+let danmuMode = loadDanmuMode();
 
 function loadUsers() {
   try {
@@ -115,6 +117,25 @@ function persistBlockedWords() {
 function containsBlockedWord(content) {
   const normalizedContent = String(content || '').toLocaleLowerCase();
   return blockedWords.find((word) => normalizedContent.includes(word.toLocaleLowerCase())) || null;
+}
+
+function normalizeDanmuMode(value) {
+  return value === 'preset' ? 'preset' : 'free';
+}
+
+function loadDanmuMode() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(danmuModePath, 'utf8'));
+    return normalizeDanmuMode(parsed?.mode);
+  } catch (error) {
+    return 'free';
+  }
+}
+
+function persistDanmuMode() {
+  const tempPath = `${danmuModePath}.tmp`;
+  fs.writeFileSync(tempPath, JSON.stringify({ mode: danmuMode }, null, 2));
+  fs.renameSync(tempPath, danmuModePath);
 }
 
 function createUserId() {
@@ -825,6 +846,25 @@ app.put('/api/danmu-filter', requirePresenter, (req, res) => {
   }
 });
 
+app.get('/api/danmu-mode', requirePresenter, (_req, res) => {
+  res.json({ mode: danmuMode });
+});
+
+app.put('/api/danmu-mode', requirePresenter, (req, res) => {
+  if (!['free', 'preset'].includes(req.body?.mode)) {
+    res.status(400).json({ error: 'invalid_danmu_mode' });
+    return;
+  }
+  danmuMode = normalizeDanmuMode(req.body?.mode);
+  try {
+    persistDanmuMode();
+    broadcast({ type: 'config', status: 'danmu-mode', mode: danmuMode });
+    res.json({ ok: true, mode: danmuMode });
+  } catch (error) {
+    res.status(500).json({ error: 'danmu_mode_save_failed' });
+  }
+});
+
 app.get('/api/quick-phrases', (req, res) => {
   res.json({ phrases: quickPhrases });
 });
@@ -1027,6 +1067,7 @@ wss.on('connection', (ws, req) => {
   ws.send(JSON.stringify({ type: 'stats', stats: getPublicStatsPayload() }));
   ws.send(JSON.stringify({ type: 'document', document: getDocumentPayload() }));
   ws.send(JSON.stringify({ type: 'config', status: 'gifts', gifts }));
+  ws.send(JSON.stringify({ type: 'config', status: 'danmu-mode', mode: danmuMode }));
   if (ws.presenterAuthorized) ws.send(JSON.stringify({ type: 'config', status: 'danmu-filter', words: blockedWords.slice() }));
   broadcastAudienceCount();
 
@@ -1318,6 +1359,11 @@ wss.on('connection', (ws, req) => {
     message.label = userLabel(ws.nickname, ws.userId);
 
     const cooldown = ws.userId ? getUserCooldown(ws.userId) : ws;
+    if (message.type === 'danmu' && danmuMode === 'preset') {
+      ws.send(JSON.stringify({ type: 'system', status: 'danmu-mode', mode: danmuMode }));
+      return;
+    }
+
     if (message.type === 'danmu' && now - cooldown.danmuAt < DANMU_COOLDOWN_MS) {
       ws.send(JSON.stringify({ type: 'system', status: 'cooldown', scope: 'danmu' }));
       return;

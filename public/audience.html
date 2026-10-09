@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Torras 极致开放麦互动系统 - 观众端</title>
-    <link rel="stylesheet" href="/css/audience.css?v=20261008-1" />
+    <link rel="stylesheet" href="/css/audience.css?v=1.7" />
   </head>
   <body>
     <main class="audience-app">
@@ -24,7 +24,7 @@
           <strong>极致开放麦互动</strong>
         </div>
         <input id="nickname" type="hidden" maxlength="18" value="匿名" />
-        <div class="composer">
+        <div id="freeDanmuComposer" class="composer">
           <label for="messageInput">弹幕</label>
           <div class="composer-row">
             <textarea id="messageInput" maxlength="80" rows="1" placeholder="发一句现场弹幕"></textarea>
@@ -34,7 +34,7 @@
         <section class="quick-phrase-panel" aria-labelledby="quickPhraseTitle">
           <div class="quick-phrase-head">
             <strong id="quickPhraseTitle">快捷用语</strong>
-            <span>点击发送高级弹幕</span>
+            <span id="danmuModeHint">点击发送预设弹幕</span>
           </div>
           <div id="quickPhraseGrid" class="quick-phrase-grid" aria-label="快捷用语列表"></div>
         </section>
@@ -68,6 +68,6 @@
       </div>
     </section>
 
-    <script src="/js/audience.js?v=20261008-1"></script>
+    <script src="/js/audience.js?v=1.7"></script>
   </body>
 </html>
