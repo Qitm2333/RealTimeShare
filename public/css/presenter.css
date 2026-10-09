@@ -565,7 +565,7 @@ body {
   width: 1px;
   height: 1px;
   opacity: var(--ribbon-opacity, 1);
-  filter: blur(var(--ribbon-blur, 0));
+  filter: brightness(var(--ribbon-brightness, 1.08)) saturate(1.08) blur(var(--ribbon-blur, 0));
   will-change: transform;
   animation: award-fall var(--fall-duration, 7s) cubic-bezier(0.28, 0.08, 0.72, 0.92) var(--fall-delay, 0s) forwards;
 }
@@ -583,8 +583,10 @@ body {
   box-sizing: border-box;
   border: 0;
   border-radius: var(--ribbon-radius, 0.8px);
-  background: var(--ribbon-color, #e3ac2c);
-  box-shadow: 0 1px calc(2px * var(--depth-scale, 1)) rgba(45, 36, 18, 0.12);
+  background: var(--ribbon-color, #f0bd3f);
+  box-shadow:
+    0 1px calc(2px * var(--depth-scale, 1)) rgba(68, 45, 5, 0.08),
+    0 0 calc(3px * var(--depth-scale, 1)) rgba(255, 220, 112, 0.18);
   transform-origin: 50% 50%;
   backface-visibility: visible;
   will-change: transform;

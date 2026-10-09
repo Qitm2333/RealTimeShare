@@ -1335,13 +1335,13 @@
   function addAwardRibbons(count, fillScreen = false) {
     if (desktopView && desktopView !== 'overlay') return;
     const ribbonPalettes = [
-      { weight: 34, color: '#e2aa2d' },
-      { weight: 27, color: '#f2c64b' },
-      { weight: 17, color: '#d38b24' },
-      { weight: 9, color: '#c83c43' },
-      { weight: 7, color: '#f0dfbd' },
-      { weight: 3, color: '#3f6f94' },
-      { weight: 3, color: '#3f806f' }
+      { weight: 34, color: '#f2bd3f' },
+      { weight: 27, color: '#ffd967' },
+      { weight: 17, color: '#e7a52b' },
+      { weight: 9, color: '#e25758' },
+      { weight: 7, color: '#fff0cf' },
+      { weight: 3, color: '#6794b5' },
+      { weight: 3, color: '#62a893' }
     ];
     const randomBetween = (min, max) => min + Math.random() * (max - min);
     const signedRandom = (min, max) => randomBetween(min, max) * (Math.random() < 0.5 ? -1 : 1);
@@ -1380,7 +1380,8 @@
       fall.style.setProperty('--fall-duration', `${duration}s`);
       fall.style.setProperty('--fall-delay', fillScreen ? `${-Math.random() * duration}s` : '0s');
       fall.style.setProperty('--ribbon-depth', `${Math.round((depth - 0.5) * 520)}px`);
-      fall.style.setProperty('--ribbon-opacity', `${0.42 + depth * 0.58}`);
+      fall.style.setProperty('--ribbon-opacity', `${0.58 + depth * 0.42}`);
+      fall.style.setProperty('--ribbon-brightness', `${1.03 + depth * 0.12}`);
       fall.style.setProperty('--ribbon-blur', `${Math.max(0, 0.65 - depth * 0.8)}px`);
       fall.style.setProperty('--drift-a', `${driftA}px`);
       fall.style.setProperty('--drift-b', `${driftB}px`);
