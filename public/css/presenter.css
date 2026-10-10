@@ -590,7 +590,7 @@ body {
   transform-origin: 50% 50%;
   backface-visibility: visible;
   will-change: transform;
-  animation: award-spin var(--spin-duration, 1.8s) linear var(--spin-delay, 0s) infinite;
+  animation: award-spin var(--spin-duration, 6s) linear var(--spin-delay, 0s) infinite;
 }
 
 @keyframes award-fall {
@@ -631,11 +631,11 @@ body {
   }
 
   50% {
-    transform: rotateZ(calc(var(--spin-start, 0deg) + var(--spin-z-half, 130deg))) rotateX(var(--spin-x-half, 360deg)) rotateY(var(--spin-y-half, 180deg)) skewX(var(--ribbon-skew, 0deg));
+    transform: rotateZ(calc(var(--spin-start, 0deg) + var(--spin-z-half, 180deg))) rotateX(var(--spin-x-half, 360deg)) rotateY(var(--spin-y-half, 180deg)) skewX(var(--ribbon-skew, 0deg));
   }
 
   100% {
-    transform: rotateZ(calc(var(--spin-start, 0deg) + var(--spin-z, 260deg))) rotateX(var(--spin-x, 720deg)) rotateY(var(--spin-y, 360deg)) skewX(var(--ribbon-skew, 0deg));
+    transform: rotateZ(calc(var(--spin-start, 0deg) + var(--spin-z, 360deg))) rotateX(var(--spin-x, 720deg)) rotateY(var(--spin-y, 360deg)) skewX(var(--ribbon-skew, 0deg));
   }
 }
 

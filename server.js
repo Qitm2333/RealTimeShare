@@ -1435,7 +1435,8 @@ wss.on('connection', (ws, req) => {
     }
 
     if (message.type === 'danmu' && !consumeRateLimit(cooldown, 'danmu', DANMU_COOLDOWN_MS, 1, now)) {
-      ws.send(JSON.stringify({ type: 'system', status: 'cooldown', scope: 'danmu' }));
+      const retryAfterMs = Math.ceil((1 - cooldown.danmu.tokens) * DANMU_COOLDOWN_MS);
+      ws.send(JSON.stringify({ type: 'system', status: 'cooldown', scope: 'danmu', retryAfterMs }));
       return;
     }
 

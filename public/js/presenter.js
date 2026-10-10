@@ -1401,14 +1401,14 @@
       ribbon.style.setProperty('--ribbon-radius', `${randomBetween(0.4, 1.1)}px`);
       ribbon.style.setProperty('--depth-scale', depthScale);
       ribbon.style.setProperty('--ribbon-skew', `${signedRandom(0, 9)}deg`);
-      ribbon.style.setProperty('--spin-duration', `${randomBetween(1.2, 3.8)}s`);
+      ribbon.style.setProperty('--spin-duration', `${randomBetween(4.8, 8.2)}s`);
       ribbon.style.setProperty('--spin-delay', `${-randomBetween(0, 3.5)}s`);
       ribbon.style.setProperty('--spin-start', `${Math.random() * 360}deg`);
       // Keep the loop phase-continuous: each axis ends on a full turn so the
       // next iteration starts at the same orientation instead of snapping.
       const spinZ = spinDirection * 360;
-      const spinX = spinDirection * 720;
-      const spinY = -spinDirection * 360;
+      const spinX = spinDirection * (Math.random() < 0.5 ? 360 : 720);
+      const spinY = signedRandom(1, 1) * 360;
       ribbon.style.setProperty('--spin-z-half', `${spinZ / 2}deg`);
       ribbon.style.setProperty('--spin-z', `${spinZ}deg`);
       ribbon.style.setProperty('--spin-x-half', `${spinX / 2}deg`);

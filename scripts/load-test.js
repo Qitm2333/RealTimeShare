@@ -10,7 +10,7 @@ const DEFAULTS = {
   giftsPerUser: 10,
   giftIntervalMs: 150,
   danmuPerUser: 3,
-  danmuIntervalMs: 1250,
+  danmuIntervalMs: 3050,
   password: '123456'
 };
 
@@ -55,8 +55,8 @@ function parseArgs(argv) {
   if (!Number.isFinite(options.giftIntervalMs) || options.giftIntervalMs < 120) {
     throw new Error('--gift-interval-ms must be at least 120');
   }
-  if (!Number.isFinite(options.danmuIntervalMs) || options.danmuIntervalMs < 1200) {
-    throw new Error('--danmu-interval-ms must be at least 1200');
+  if (!Number.isFinite(options.danmuIntervalMs) || options.danmuIntervalMs < 3000) {
+    throw new Error('--danmu-interval-ms must be at least 3000');
   }
   return options;
 }

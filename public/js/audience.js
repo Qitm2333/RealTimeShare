@@ -42,7 +42,7 @@
   const effectTapGapMs = 150;
   let websocket;
   let danmuCooldownTimer;
-  let danmuCooldownInterval;
+  let danmuCooldownEndsAt = 0;
   let quickPhraseCooldownTimer;
   let lastEffectTapAt = 0;
   let activeView = 'interaction';
@@ -331,31 +331,22 @@
     const votes = loadPollVotes(); votes[pollId] = optionIndices; localStorage.setItem('live-share-poll-votes', JSON.stringify(votes));
   }
 
-  function setDanmuCooldown() {
-    sendButton.disabled = true;
-    window.clearInterval(danmuCooldownInterval);
-    clearTimeout(danmuCooldownTimer);
-    const cooldownEndsAt = Date.now() + danmuCooldownMs;
-    const updateCooldownLabel = () => {
-      const remainingMs = Math.max(0, cooldownEndsAt - Date.now());
-      if (!remainingMs) {
-        window.clearInterval(danmuCooldownInterval);
-        sendButton.textContent = '发送';
-        sendButton.removeAttribute('aria-label');
-        sendButton.disabled = !isConnected() || !identityConfirmed;
-        return;
-      }
-      sendButton.textContent = `发送 ${Math.ceil(remainingMs / 1000)}s`;
+  function refreshDanmuCooldown() {
+    window.clearTimeout(danmuCooldownTimer);
+    const remainingMs = Math.max(0, danmuCooldownEndsAt - Date.now());
+    sendButton.disabled = remainingMs > 0 || !isConnected() || !identityConfirmed;
+    sendButton.textContent = remainingMs ? `发送 ${Math.ceil(remainingMs / 1000)}s` : '发送';
+    if (remainingMs) {
       sendButton.setAttribute('aria-label', `弹幕冷却中，还需 ${Math.ceil(remainingMs / 1000)} 秒`);
-    };
-    updateCooldownLabel();
-    danmuCooldownInterval = window.setInterval(updateCooldownLabel, 100);
-    danmuCooldownTimer = setTimeout(() => {
-      window.clearInterval(danmuCooldownInterval);
-      sendButton.textContent = '发送';
+      danmuCooldownTimer = window.setTimeout(refreshDanmuCooldown, Math.min(250, remainingMs));
+    } else {
       sendButton.removeAttribute('aria-label');
-      sendButton.disabled = !isConnected() || !identityConfirmed;
-    }, danmuCooldownMs);
+    }
+  }
+
+  function setDanmuCooldown(durationMs = danmuCooldownMs) {
+    danmuCooldownEndsAt = Date.now() + durationMs;
+    refreshDanmuCooldown();
   }
 
   function setQuickPhraseCooldown() {
@@ -371,15 +362,19 @@
   function send(payload, options = {}) {
     if (payload?.type === 'danmu' && danmuMode === 'preset') {
       setStatus('当前仅允许预设弹幕', '');
-      return;
+      return false;
+    }
+    if (payload?.type === 'danmu' && Date.now() < danmuCooldownEndsAt) {
+      setStatus('弹幕冷却中，请稍后再发', '');
+      return false;
     }
     if (!identityConfirmed) {
       showIdentityDialog();
-      return;
+      return false;
     }
     if (!isConnected()) {
       setStatus('未连接', 'is-offline');
-      return;
+      return false;
     }
 
     websocket.send(JSON.stringify({ ...payload, user: getUser() }));
@@ -387,6 +382,7 @@
     if (options.cooldown === 'danmu') {
       setDanmuCooldown();
     }
+    return true;
   }
 
   function sendGift(gift) {
@@ -418,7 +414,7 @@
       websocket.send(JSON.stringify({ type: 'role', role: 'audience' }));
       if (identityReady) websocket.send(JSON.stringify({ type: 'identify', userId: identity.userId, nickname: getUser(), sessionId: identity.sessionId || '' }));
       setStatus('已连接', 'is-online');
-      sendButton.disabled = !identityConfirmed;
+      refreshDanmuCooldown();
       quickPhraseControls.forEach((control) => {
         control.disabled = !identityConfirmed;
       });
@@ -438,6 +434,7 @@
 
       if (message.type === 'system' && message.status === 'cooldown' && message.scope === 'danmu') {
         setStatus('稍后再发', '');
+        setDanmuCooldown(Number(message.retryAfterMs) || danmuCooldownMs);
       }
 
       if (message.type === 'system' && message.status === 'cooldown' && message.scope === 'quick-danmu') {
@@ -466,6 +463,7 @@
         identityDialog.hidden = true;
         identityDialog.setAttribute('aria-hidden', 'true');
         controls.forEach((control) => { control.disabled = false; });
+        refreshDanmuCooldown();
         if (activePoll) showPoll(activePoll);
       }
 
@@ -544,8 +542,7 @@
       return;
     }
 
-    send({ type: 'danmu', content }, { cooldown: 'danmu' });
-    messageInput.value = '';
+    if (send({ type: 'danmu', content }, { cooldown: 'danmu' })) messageInput.value = '';
     messageInput.focus();
   });
 
