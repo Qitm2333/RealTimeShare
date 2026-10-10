@@ -1404,12 +1404,17 @@
       ribbon.style.setProperty('--spin-duration', `${randomBetween(1.2, 3.8)}s`);
       ribbon.style.setProperty('--spin-delay', `${-randomBetween(0, 3.5)}s`);
       ribbon.style.setProperty('--spin-start', `${Math.random() * 360}deg`);
-      ribbon.style.setProperty('--spin-z-half', `${spinDirection * randomBetween(80, 220)}deg`);
-      ribbon.style.setProperty('--spin-z', `${spinDirection * randomBetween(220, 520)}deg`);
-      ribbon.style.setProperty('--spin-x-half', `${spinDirection * randomBetween(120, 420)}deg`);
-      ribbon.style.setProperty('--spin-x', `${spinDirection * randomBetween(480, 940)}deg`);
-      ribbon.style.setProperty('--spin-y-half', `${-spinDirection * randomBetween(70, 300)}deg`);
-      ribbon.style.setProperty('--spin-y', `${-spinDirection * randomBetween(320, 780)}deg`);
+      // Keep the loop phase-continuous: each axis ends on a full turn so the
+      // next iteration starts at the same orientation instead of snapping.
+      const spinZ = spinDirection * 360;
+      const spinX = spinDirection * 720;
+      const spinY = -spinDirection * 360;
+      ribbon.style.setProperty('--spin-z-half', `${spinZ / 2}deg`);
+      ribbon.style.setProperty('--spin-z', `${spinZ}deg`);
+      ribbon.style.setProperty('--spin-x-half', `${spinX / 2}deg`);
+      ribbon.style.setProperty('--spin-x', `${spinX}deg`);
+      ribbon.style.setProperty('--spin-y-half', `${spinY / 2}deg`);
+      ribbon.style.setProperty('--spin-y', `${spinY}deg`);
       sway.appendChild(ribbon);
       fall.appendChild(sway);
       fragment.appendChild(fall);

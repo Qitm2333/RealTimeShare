@@ -9,7 +9,7 @@ const { csvPath, loadGifts } = require('./config/gift-config');
 
 const PORT = Number(process.env.PORT || 3000);
 const PRESENTER_PASSWORD = process.env.PRESENTER_PASSWORD || '123456';
-const DANMU_COOLDOWN_MS = 1200;
+const DANMU_COOLDOWN_MS = 3000;
 const QUICK_DANMU_COOLDOWN_MS = 900;
 const EFFECT_COOLDOWN_MS = 120;
 const MAX_CONTENT_LENGTH = 80;
@@ -1434,7 +1434,7 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
-    if (message.type === 'danmu' && !consumeRateLimit(cooldown, 'danmu', DANMU_COOLDOWN_MS, 2, now)) {
+    if (message.type === 'danmu' && !consumeRateLimit(cooldown, 'danmu', DANMU_COOLDOWN_MS, 1, now)) {
       ws.send(JSON.stringify({ type: 'system', status: 'cooldown', scope: 'danmu' }));
       return;
     }

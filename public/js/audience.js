@@ -37,11 +37,12 @@
   let quickPhraseList = [];
   let quickPhraseControls = [];
   const controls = [sendButton];
-  const danmuCooldownMs = 1300;
+  const danmuCooldownMs = 3000;
   const quickPhraseCooldownMs = 950;
   const effectTapGapMs = 150;
   let websocket;
   let danmuCooldownTimer;
+  let danmuCooldownInterval;
   let quickPhraseCooldownTimer;
   let lastEffectTapAt = 0;
   let activeView = 'interaction';
@@ -332,9 +333,27 @@
 
   function setDanmuCooldown() {
     sendButton.disabled = true;
-
+    window.clearInterval(danmuCooldownInterval);
     clearTimeout(danmuCooldownTimer);
+    const cooldownEndsAt = Date.now() + danmuCooldownMs;
+    const updateCooldownLabel = () => {
+      const remainingMs = Math.max(0, cooldownEndsAt - Date.now());
+      if (!remainingMs) {
+        window.clearInterval(danmuCooldownInterval);
+        sendButton.textContent = '发送';
+        sendButton.removeAttribute('aria-label');
+        sendButton.disabled = !isConnected() || !identityConfirmed;
+        return;
+      }
+      sendButton.textContent = `发送 ${Math.ceil(remainingMs / 1000)}s`;
+      sendButton.setAttribute('aria-label', `弹幕冷却中，还需 ${Math.ceil(remainingMs / 1000)} 秒`);
+    };
+    updateCooldownLabel();
+    danmuCooldownInterval = window.setInterval(updateCooldownLabel, 100);
     danmuCooldownTimer = setTimeout(() => {
+      window.clearInterval(danmuCooldownInterval);
+      sendButton.textContent = '发送';
+      sendButton.removeAttribute('aria-label');
       sendButton.disabled = !isConnected() || !identityConfirmed;
     }, danmuCooldownMs);
   }
