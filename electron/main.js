@@ -143,6 +143,10 @@ function restoreInteractionZOrder() {
     if (!win.isAlwaysOnTop()) win.setAlwaysOnTop(true, 'screen-saver', 1);
   });
   if (lotteryVisible) return;
+  // Native <select> popups temporarily take focus. Moving the owner window
+  // above other windows while the popup is open makes Windows close it
+  // immediately, so keep the current z-order until the tools are closed.
+  if (toolsOpen) return;
   visibleWindows.forEach((win) => win.moveTop());
 }
 

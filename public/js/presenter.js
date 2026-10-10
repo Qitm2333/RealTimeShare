@@ -149,6 +149,7 @@
   const giftEffectsEnabledKey = 'live-share-gift-effects-enabled';
   const danmuEffectsEnabledKey = 'live-share-danmu-effects-enabled';
   const giftEffectLimitKey = 'live-share-gift-effect-limit';
+  const giftEffectLimitConfiguredKey = 'live-share-gift-effect-limit-configured';
   const awardModeEnabledKey = 'live-share-award-mode-enabled';
   const trackBusyUntil = Array.from({ length: trackCount }, () => 0);
   const recentEffects = [];
@@ -159,6 +160,12 @@
   let websocket;
   let giftEffectsEnabled = localStorage.getItem(giftEffectsEnabledKey) !== 'false';
   let danmuEffectsEnabled = localStorage.getItem(danmuEffectsEnabledKey) !== 'false';
+  const storedGiftEffectLimit = localStorage.getItem(giftEffectLimitKey);
+  const hasGiftEffectLimitConfig = localStorage.getItem(giftEffectLimitConfiguredKey) === 'true';
+  if (!hasGiftEffectLimitConfig && (!storedGiftEffectLimit || storedGiftEffectLimit === '1')) {
+    localStorage.setItem(giftEffectLimitKey, '9999');
+    localStorage.setItem(giftEffectLimitConfiguredKey, 'true');
+  }
   let maxGiftEffects = normalizeGiftEffectLimit(localStorage.getItem(giftEffectLimitKey));
   let danmuMode = 'free';
   let awardModeEnabled = localStorage.getItem(awardModeEnabledKey) === 'true';
@@ -1459,6 +1466,7 @@
     maxGiftEffects = normalizeGiftEffectLimit(value);
     if (giftEffectLimit) giftEffectLimit.value = String(maxGiftEffects);
     localStorage.setItem(giftEffectLimitKey, String(maxGiftEffects));
+    localStorage.setItem(giftEffectLimitConfiguredKey, 'true');
     while (effectLayer.children.length > maxGiftEffects) effectLayer.firstElementChild?.remove();
   }
 

@@ -10,8 +10,8 @@
         if (view) document.documentElement.dataset.desktopView = view;
       })();
     </script>
-    <link rel="stylesheet" href="/css/presenter.css?v=1.8" />
-    <link rel="stylesheet" href="/css/desktop-presenter.css?v=1.8" />
+    <link rel="stylesheet" href="/css/presenter.css?v=1.8.0-settings" />
+    <link rel="stylesheet" href="/css/desktop-presenter.css?v=1.8.0-settings" />
   </head>
   <body>
     <main class="stage">
@@ -123,6 +123,11 @@
         </nav>
         <section id="pollToolView" data-tool-view="poll" aria-labelledby="pollTab">
           <div id="pollHome" class="poll-home">
+            <div class="tool-view-intro">
+              <span class="tool-view-kicker">互动投票</span>
+              <strong>让现场快速做决定</strong>
+              <small>保存常用问题，发起后观众即可在手机端参与。</small>
+            </div>
             <div id="pollEmpty" class="poll-empty" hidden>
               <strong>还没有投票内容</strong>
               <span>创建一个投票，让观众参与进来</span>
@@ -135,6 +140,11 @@
             </div>
           </div>
           <div id="pollEditor" class="poll-editor" hidden>
+            <div class="tool-view-intro is-compact">
+              <span class="tool-view-kicker">投票设置</span>
+              <strong>配置问题和选项</strong>
+              <small>选项至少 2 个，每人可选择的数量不能超过选项数。</small>
+            </div>
             <label>问题<input id="pollQuestionInput" maxlength="120" placeholder="输入投票问题" /></label>
             <label class="poll-selection-field">选择数量<select id="pollMaxSelections" aria-label="每人可选数量"><option value="1">单选</option></select></label>
             <div class="poll-options-field"><span>选项</span><div id="pollOptionsInput" class="poll-option-list"></div><button id="pollAddOption" class="poll-add-option" type="button">＋ 添加选项</button></div>
@@ -169,6 +179,11 @@
         </section>
         <section id="settingsToolView" data-tool-view="settings" aria-labelledby="settingsTab" hidden>
           <div class="interaction-settings">
+            <div class="tool-view-intro">
+              <span class="tool-view-kicker">现场控制</span>
+              <strong>互动呈现设置</strong>
+              <small>控制屏幕上的礼物、弹幕和安全内容，保存后立即对当前现场生效。</small>
+            </div>
             <label class="settings-field">
               <span>同屏礼物数量</span>
               <small>同一时刻最多显示多少个礼物动画，默认上限 9999。</small>
@@ -212,6 +227,6 @@
     </div>
 
     <script src="/js/pdf-reader.js?v=20260916-3"></script>
-    <script src="/js/presenter.js?v=1.8"></script>
+    <script src="/js/presenter.js?v=1.8.0-settings"></script>
   </body>
 </html>
