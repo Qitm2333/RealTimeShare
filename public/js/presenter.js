@@ -969,7 +969,9 @@
       const data = await response.json();
       const urls = (data.urls || []).map(normalizeAudienceUrl).filter(Boolean);
       const fallbackUrl = `${location.protocol}//${location.host}/audience`;
-      const allUrls = [savedUrl, ...urls, fallbackUrl].filter(Boolean);
+      // Prefer the address detected from the current network. A manually
+      // saved address can be stale after the presenter changes Wi-Fi.
+      const allUrls = [...urls, savedUrl, fallbackUrl].filter(Boolean);
       const uniqueUrls = allUrls.filter((url, index, list) => list.indexOf(url) === index);
 
       setAudienceUrlOptions(uniqueUrls);

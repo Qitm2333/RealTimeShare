@@ -60,7 +60,8 @@ test('preset sentence, authorization, cooldown, persistence and 150-user bursts'
       if (server.exitCode !== null) throw new Error(log);
       try {
         const response = await fetch(`${url}/api/desktop-health`);
-        if ((await response.json()).pid === server.pid) return;
+        const health = await response.json();
+        if (health.pid === server.pid && health.listenAddress === host) return;
       } catch (_) {}
       await pause(50);
     }

@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { EventEmitter } = require('node:events');
 
-function desktopFixture({ authorized = async () => true, failLan = false } = {}) {
+function desktopFixture({ authorized = async () => true, failLan = false, wrongLanBinding = false } = {}) {
   const processes = [];
   const windows = [];
   const handlers = new Map();
@@ -64,7 +64,9 @@ function desktopFixture({ authorized = async () => true, failLan = false } = {})
       queueMicrotask(() => {
         const response = new EventEmitter(); response.statusCode = 200; response.setEncoding = () => {};
         callback(response);
-        response.emit('data', JSON.stringify({ service: 'realtime-share', pid: processes.at(-1).pid }));
+        const process = processes.at(-1);
+        const listenAddress = wrongLanBinding && process.host === '0.0.0.0' ? '127.0.0.1' : process.host;
+        response.emit('data', JSON.stringify({ service: 'realtime-share', pid: process.pid, listenAddress }));
         response.emit('end');
       });
       return request;
@@ -123,6 +125,16 @@ test('retry after cancellation starts only after approval; exit returns to loopb
 
 test('LAN startup failure rolls back without entering interaction', async () => {
   const fixture = desktopFixture({ failLan: true });
+  await fixture.init();
+  assert.equal((await fixture.start()).ok, false);
+  assert.deepEqual(fixture.processes.map((child) => child.host), ['127.0.0.1', '0.0.0.0', '127.0.0.1']);
+  assert.equal(fixture.windows.length, 1);
+  assert.equal(fixture.windows[0].visible, true);
+  fixture.app.quit();
+});
+
+test('LAN startup with a loopback health response cannot enter interaction', async () => {
+  const fixture = desktopFixture({ wrongLanBinding: true });
   await fixture.init();
   assert.equal((await fixture.start()).ok, false);
   assert.deepEqual(fixture.processes.map((child) => child.host), ['127.0.0.1', '0.0.0.0', '127.0.0.1']);

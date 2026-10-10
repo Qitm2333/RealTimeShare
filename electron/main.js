@@ -33,8 +33,14 @@ const sessionToken = crypto.randomBytes(24).toString('hex');
 
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
 
-function requestServer(expectedPid) {
+function requestServer(expectedPid, expectedHost) {
   return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
     const request = http.get(`${appUrl}/api/desktop-health`, (response) => {
       let body = '';
       response.setEncoding('utf8');
@@ -42,14 +48,17 @@ function requestServer(expectedPid) {
       response.on('end', () => {
         try {
           const data = JSON.parse(body);
-          resolve(response.statusCode === 200 && data.service === 'realtime-share' && data.pid === expectedPid);
+          finish(response.statusCode === 200
+            && data.service === 'realtime-share'
+            && data.pid === expectedPid
+            && data.listenAddress === expectedHost);
         } catch (_error) {
-          resolve(false);
+          finish(false);
         }
       });
     });
     request.setTimeout(800, () => request.destroy());
-    request.on('error', () => resolve(false));
+    request.on('error', () => finish(false));
   });
 }
 
@@ -105,7 +114,7 @@ async function startServer(listenHost) {
     if (spawnError) throw spawnError;
     if (quitting) throw new Error('Application is quitting');
     if (child.exitCode !== null || child.signalCode !== null) throw new Error('Interaction server exited');
-    if (await requestServer(child.pid)) return;
+    if (await requestServer(child.pid, listenHost)) return;
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
   throw new Error(`Interaction server did not start on port ${port}`);
@@ -159,15 +168,26 @@ function runPowerShell(command, elevated = false) {
   return new Promise((resolve) => {
     const encoded = Buffer.from(command, 'utf16le').toString('base64');
     const invocation = elevated
-      ? `$ErrorActionPreference = 'Stop'; try { $process = Start-Process -FilePath 'powershell.exe' -Verb RunAs -WindowStyle Hidden -Wait -PassThru -ArgumentList @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-EncodedCommand','${encoded}'); exit $process.ExitCode } catch { exit 1 }`
+      ? `$ErrorActionPreference = 'Stop'; try { $process = Start-Process -FilePath 'powershell.exe' -Verb RunAs -WindowStyle Hidden -Wait -PassThru -ArgumentList @('-NoLogo','-NoProfile','-NonInteractive','-WindowStyle','Hidden','-ExecutionPolicy','Bypass','-EncodedCommand','${encoded}'); exit $process.ExitCode } catch { exit 1 }`
       : command;
     const invocationEncoded = Buffer.from(invocation, 'utf16le').toString('base64');
-    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', invocationEncoded], {
+    const child = spawn('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', invocationEncoded], {
       windowsHide: true,
       stdio: 'ignore'
     });
-    child.once('error', () => resolve(false));
-    child.once('exit', (code) => resolve(code === 0));
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve(result);
+    };
+    const timeout = setTimeout(() => {
+      child.kill();
+      finish(false);
+    }, elevated ? 120000 : 10000);
+    child.once('error', () => finish(false));
+    child.once('exit', (code) => finish(code === 0));
   });
 }
 

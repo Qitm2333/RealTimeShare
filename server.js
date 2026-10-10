@@ -983,7 +983,12 @@ app.get('/desktop-start', (req, res) => {
 });
 
 app.get('/api/desktop-health', (_req, res) => {
-  res.json({ service: 'realtime-share', pid: process.pid });
+  const address = server.address();
+  res.json({
+    service: 'realtime-share',
+    pid: process.pid,
+    listenAddress: address && typeof address === 'object' ? address.address : null
+  });
 });
 
 app.get('/audience', (req, res) => {
