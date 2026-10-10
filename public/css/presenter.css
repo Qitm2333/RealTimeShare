@@ -97,6 +97,12 @@ body {
     opacity 180ms ease;
 }
 
+.pdf-toolbar > .pdf-status,
+.pdf-toolbar > .pdf-upload-progress,
+.pdf-toolbar > .pdf-reader-actions {
+  display: none !important;
+}
+
 .pdf-upload-progress {
   display: grid;
   flex: 1 1 180px;
@@ -146,6 +152,32 @@ body {
   flex-wrap: wrap;
 }
 
+.toolbar-group {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #e5e5ea;
+  border-radius: 11px;
+  background: #f1f1f3;
+}
+
+.toolbar-session-group {
+  border-color: #f0d8d4;
+  background: #fff6f4;
+}
+
+.toolbar-moderation-group {
+  border-color: #e0e5eb;
+  background: #f3f5f8;
+}
+
+.toolbar-award-group {
+  border-color: #f1e3bf;
+  background: #fff9eb;
+}
+
 .file-button,
 .secondary-button,
 .pdf-reader-actions button {
@@ -191,6 +223,22 @@ body {
   border-color: rgba(180, 35, 24, 0.24);
   background: rgba(180, 35, 24, 0.06);
   color: #b42318;
+}
+
+.advanced-settings-button {
+  min-height: 42px;
+  margin-left: 2px;
+  padding: 0 15px;
+  border-color: rgba(255, 91, 0, 0.34);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--brand-strong);
+  box-shadow: 0 3px 10px rgba(255, 91, 0, 0.08);
+}
+
+.advanced-settings-button:hover {
+  border-color: var(--brand);
+  background: var(--brand-soft);
 }
 
 .visually-hidden {

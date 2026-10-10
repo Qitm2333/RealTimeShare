@@ -10,41 +10,44 @@
         if (view) document.documentElement.dataset.desktopView = view;
       })();
     </script>
-    <link rel="stylesheet" href="/css/presenter.css?v=1.8.0-settings" />
-    <link rel="stylesheet" href="/css/desktop-presenter.css?v=1.8.0-settings" />
+    <link rel="stylesheet" href="/css/presenter.css?v=2.0.0" />
+    <link rel="stylesheet" href="/css/desktop-presenter.css?v=2.0.0" />
   </head>
   <body>
     <main class="stage">
       <section class="pdf-shell" aria-label="PDF 演示内容">
         <div class="pdf-toolbar">
-          <div class="pdf-file-actions">
-            <label id="pdfFileButton" class="file-button" for="pdfInput">上传课件</label>
+          <div class="pdf-file-actions toolbar-group toolbar-session-group" aria-label="互动现场操作">
+            <button id="desktopStop" class="desktop-stop" type="button" hidden>退出互动</button>
             <input id="pdfInput" class="visually-hidden" type="file" accept="application/pdf,.pdf" />
             <button id="sessionReset" class="secondary-button reset-button" type="button" title="移除 PDF 并清空本场数据">重置现场</button>
           </div>
-          <div id="pdfStatus" class="pdf-status">未打开</div>
+          <div id="pdfStatus" class="pdf-status" hidden>未打开</div>
           <div id="pdfUploadProgress" class="pdf-upload-progress" hidden aria-live="polite">
             <div class="pdf-upload-progress-head"><span>正在上传</span><strong id="pdfUploadPercent">0%</strong></div>
             <div id="pdfUploadProgressTrack" class="pdf-upload-progress-track" role="progressbar" aria-label="PDF 上传进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="pdfUploadProgressBar"></span></div>
           </div>
-          <button id="pollToggle" class="secondary-button" type="button" aria-haspopup="dialog" aria-expanded="false">投票</button>
-          <button id="danmuToggle" class="gift-toggle is-on" type="button" aria-pressed="true">弹幕开</button>
-          <button id="giftToggle" class="gift-toggle is-on" type="button" aria-pressed="true">礼物开</button>
-          <button id="awardToggle" class="gift-toggle" type="button" aria-pressed="false">颁奖</button>
-          <div class="pdf-reader-actions" aria-label="PDF 阅读控制">
+          <div class="toolbar-group toolbar-moderation-group" aria-label="互动开关">
+            <button id="danmuToggle" class="gift-toggle is-on" type="button" aria-pressed="true">弹幕开</button>
+            <button id="giftToggle" class="gift-toggle is-on" type="button" aria-pressed="true">礼物开</button>
+          </div>
+          <div class="toolbar-group toolbar-award-group" aria-label="颁奖效果">
+            <button id="awardToggle" class="gift-toggle" type="button" aria-pressed="false">颁奖</button>
+          </div>
+          <button id="pollToggle" class="secondary-button advanced-settings-button" type="button" aria-haspopup="dialog" aria-expanded="false">高级设置</button>
+          <div class="pdf-reader-actions" aria-label="PDF 阅读控制" hidden>
             <button id="pdfPrevious" type="button" aria-label="上一页">‹</button>
             <span class="page-indicator"><span id="pdfPageNumber">1</span> / <span id="pdfPageCount">0</span><input id="pdfPageInput" class="visually-hidden" type="number" min="1" value="1" aria-hidden="true" tabindex="-1" /></span>
             <button id="pdfNext" type="button" aria-label="下一页">›</button>
             <button id="pdfFitWidth" class="fit-button" type="button">适应宽度</button>
             <button id="pdfFitPage" class="fit-button" type="button">整页显示</button>
           </div>
-          <button id="desktopStop" class="desktop-stop" type="button" hidden>结束互动</button>
         </div>
         <div id="pdfViewport" class="pdf-viewport">
           <canvas id="pdfCanvas" class="pdf-canvas" hidden></canvas>
           <div id="emptyState" class="empty-state">
-            <strong>上传一个 PDF 开始演示</strong>
-            <span>当前版本一次只支持一个 PDF 文件</span>
+            <strong>互动展示已就绪</strong>
+            <span>打开高级设置，管理弹幕、礼物和现场互动</span>
           </div>
         </div>
       </section>
@@ -227,6 +230,6 @@
     </div>
 
     <script src="/js/pdf-reader.js?v=20260916-3"></script>
-    <script src="/js/presenter.js?v=1.8.0-settings"></script>
+    <script src="/js/presenter.js?v=2.0.0"></script>
   </body>
 </html>

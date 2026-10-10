@@ -84,7 +84,7 @@ html[data-desktop-view="toolbar"] .desktop-stop {
   display: inline-flex !important;
   align-items: center;
   min-height: 34px;
-  margin-left: auto;
+  margin-left: 0;
   padding: 0 13px;
   border: 1px solid #d92d20;
   border-radius: 7px;
@@ -93,6 +93,13 @@ html[data-desktop-view="toolbar"] .desktop-stop {
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
+}
+
+html[data-desktop-view="toolbar"] .toolbar-session-group .desktop-stop {
+  border-color: rgba(180, 35, 24, 0.24);
+  border-radius: 7px;
+  background: rgba(180, 35, 24, 0.06);
+  color: #b42318;
 }
 
 html[data-desktop-view="toolbar"] .tools-dialog {
