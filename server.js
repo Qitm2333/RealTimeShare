@@ -16,7 +16,8 @@ const MAX_CONTENT_LENGTH = 80;
 const MAX_USER_LENGTH = 18;
 const MAX_PDF_SIZE = 100 * 1024 * 1024;
 const SESSION_COOKIE = 'presenter_auth';
-const SESSION_TOKEN = crypto.randomBytes(24).toString('hex');
+const SESSION_TOKEN = process.env.SESSION_TOKEN || crypto.randomBytes(24).toString('hex');
+const LISTEN_HOST = process.env.LISTEN_HOST || '0.0.0.0';
 
 const app = express();
 const publicDir = path.join(__dirname, 'public');
@@ -28,7 +29,7 @@ const interactionStatePath = path.join(dataDir, 'interaction-state.json');
 const lotteryHistoryPath = path.join(dataDir, 'lottery-history.json');
 const danmuFilterPath = path.join(dataDir, 'danmu-filter.json');
 const danmuModePath = path.join(dataDir, 'danmu-mode.json');
-const quickPhrasesPath = path.join(dataDir, 'quick-phrases.json');
+const presetDanmuPath = path.join(dataDir, 'preset-danmu.json');
 
 fs.mkdirSync(dataDir, { recursive: true });
 
@@ -44,8 +45,8 @@ const defaultQuickPhrases = [
   { id: 'think-do-more', text: '多想一点，多做一点', image: '/assets/quick-phrases/think-do-more.png' },
   { id: 'new-angle', text: '换个角度再想想', image: '/assets/quick-phrases/new-angle.png' }
 ];
-let quickPhrases = loadQuickPhrases();
-let quickPhrasesById = new Map(quickPhrases.map((phrase) => [phrase.id, phrase]));
+const quickPhrases = defaultQuickPhrases.slice();
+const quickPhrasesById = new Map(quickPhrases.map((phrase) => [phrase.id, phrase]));
 
 const sensoryAdjectives = [
   '美味的', '香甜的', '酥脆的', '冰凉的', '温热的', '柔软的', '清新的', '辛辣的',
@@ -66,6 +67,7 @@ const users = loadUsers();
 const userCooldowns = new Map();
 let blockedWords = loadBlockedWords();
 let danmuMode = loadDanmuMode();
+let presetDanmuText = loadPresetDanmu();
 
 function loadUsers() {
   try {
@@ -140,43 +142,23 @@ function persistDanmuMode() {
   fs.renameSync(tempPath, danmuModePath);
 }
 
-function normalizeQuickPhrases(value) {
-  const defaultByText = new Map(defaultQuickPhrases.map((phrase) => [phrase.text.toLocaleLowerCase(), phrase]));
-  const rawPhrases = Array.isArray(value) ? value : [];
-  const seen = new Set();
-  return rawPhrases
-    .map((phrase) => cleanString(typeof phrase === 'string' ? phrase : phrase?.text, '', 40))
-    .filter((text) => {
-      const key = text.toLocaleLowerCase();
-      if (!text || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .slice(0, 30)
-    .map((text) => {
-      const original = defaultByText.get(text.toLocaleLowerCase());
-      return original || {
-        id: `custom-${crypto.createHash('sha256').update(text).digest('hex').slice(0, 12)}`,
-        text,
-        image: ''
-      };
-    });
+function normalizePresetDanmu(value) {
+  return cleanString(value, '', MAX_CONTENT_LENGTH);
 }
 
-function loadQuickPhrases() {
+function loadPresetDanmu() {
   try {
-    const parsed = JSON.parse(fs.readFileSync(quickPhrasesPath, 'utf8'));
-    const phrases = normalizeQuickPhrases(parsed?.phrases);
-    return phrases.length ? phrases : defaultQuickPhrases.slice();
+    const parsed = JSON.parse(fs.readFileSync(presetDanmuPath, 'utf8'));
+    return normalizePresetDanmu(parsed?.text) || '为讲者点赞！';
   } catch (error) {
-    return defaultQuickPhrases.slice();
+    return '为讲者点赞！';
   }
 }
 
-function persistQuickPhrases() {
-  const tempPath = `${quickPhrasesPath}.tmp`;
-  fs.writeFileSync(tempPath, JSON.stringify({ phrases: quickPhrases.map((phrase) => phrase.text) }, null, 2));
-  fs.renameSync(tempPath, quickPhrasesPath);
+function persistPresetDanmu(text) {
+  const tempPath = `${presetDanmuPath}.tmp`;
+  fs.writeFileSync(tempPath, JSON.stringify({ text }, null, 2));
+  fs.renameSync(tempPath, presetDanmuPath);
 }
 
 function createUserId() {
@@ -266,6 +248,19 @@ function persistInteractionState() {
   const tempPath = `${interactionStatePath}.tmp`;
   fs.writeFileSync(tempPath, JSON.stringify(interactionState, null, 2));
   fs.renameSync(tempPath, interactionStatePath);
+}
+
+let interactionPersistTimer = null;
+function scheduleInteractionStatePersist() {
+  if (interactionPersistTimer) return;
+  interactionPersistTimer = setTimeout(() => {
+    interactionPersistTimer = null;
+    try {
+      persistInteractionState();
+    } catch (error) {
+      console.error(`Interaction state persistence failed: ${error.message}`);
+    }
+  }, 100);
 }
 
 function loadLotteryHistory() {
@@ -630,9 +625,16 @@ function sendPollError(ws, reason, poll = activePoll) {
   });
 }
 
+let statsBroadcastTimer = null;
 function broadcastStats() {
-  sendToRole('presenter', { type: 'stats', stats: getPublicStatsPayload() });
-  broadcastToPresenters({ type: 'interaction-ranking', stats: getPresenterStatsPayload() });
+  // Messages are delivered individually. Coalesce only the full ranking and
+  // totals, which otherwise get serialized thousands of times during a burst.
+  if (statsBroadcastTimer) return;
+  statsBroadcastTimer = setTimeout(() => {
+    statsBroadcastTimer = null;
+    sendToRole('presenter', { type: 'stats', stats: getPublicStatsPayload() });
+    broadcastToPresenters({ type: 'interaction-ranking', stats: getPresenterStatsPayload() });
+  }, 100);
 }
 
 app.post('/api/login', (req, res) => {
@@ -906,25 +908,28 @@ app.put('/api/danmu-mode', requirePresenter, (req, res) => {
   }
 });
 
-app.get('/api/quick-phrases', (req, res) => {
-  res.json({ phrases: quickPhrases });
+app.get('/api/preset-danmu', (_req, res) => {
+  res.json({ text: presetDanmuText });
 });
 
-app.put('/api/quick-phrases', requirePresenter, (req, res) => {
-  const phrases = normalizeQuickPhrases(req.body?.phrases);
-  if (!phrases.length) {
-    res.status(400).json({ error: 'quick_phrases_required' });
+app.put('/api/preset-danmu', requirePresenter, (req, res) => {
+  const text = normalizePresetDanmu(req.body?.text);
+  if (!text) {
+    res.status(400).json({ error: 'preset_danmu_required' });
     return;
   }
-  quickPhrases = phrases;
-  quickPhrasesById = new Map(quickPhrases.map((phrase) => [phrase.id, phrase]));
   try {
-    persistQuickPhrases();
-    broadcast({ type: 'config', status: 'quick-phrases', phrases: quickPhrases });
-    res.json({ ok: true, phrases: quickPhrases });
+    persistPresetDanmu(text);
+    presetDanmuText = text;
+    broadcast({ type: 'config', status: 'preset-danmu', text: presetDanmuText });
+    res.json({ ok: true, text: presetDanmuText });
   } catch (error) {
-    res.status(500).json({ error: 'quick_phrases_save_failed' });
+    res.status(500).json({ error: 'preset_danmu_save_failed' });
   }
+});
+
+app.get('/api/quick-phrases', (req, res) => {
+  res.json({ phrases: quickPhrases });
 });
 
 app.get('/api/audience-url', requirePresenter, (req, res) => {
@@ -978,21 +983,21 @@ app.get('/desktop-start', (req, res) => {
 });
 
 app.get('/api/desktop-health', (_req, res) => {
-  res.json({ service: 'realtime-share' });
+  res.json({ service: 'realtime-share', pid: process.pid });
 });
 
 app.get('/audience', (req, res) => {
   res.sendFile(path.join(publicDir, 'audience.html'));
 });
 
-const server = app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, LISTEN_HOST, () => {
   const addresses = getLanAddresses();
 
   console.log(`Torras open mic interaction system is running on port ${PORT}`);
   console.log(`Presenter: http://localhost:${PORT}/`);
   console.log(`Audience:  http://localhost:${PORT}/audience`);
 
-  addresses.forEach((address) => {
+  if (LISTEN_HOST === '0.0.0.0') addresses.forEach((address) => {
     console.log(`LAN presenter: http://${address}:${PORT}/`);
     console.log(`LAN audience:  http://${address}:${PORT}/audience`);
   });
@@ -1040,11 +1045,7 @@ function recordInteraction(ws, message) {
     user.gifts[message.effect] = Number(user.gifts[message.effect] || 0) + 1;
   }
 
-  try {
-    persistInteractionState();
-  } catch (error) {
-    console.error(`Interaction state persistence failed: ${error.message}`);
-  }
+  scheduleInteractionStatePersist();
 }
 
 function drawLottery(count, excludePrevious = true) {
@@ -1137,6 +1138,7 @@ wss.on('connection', (ws, req) => {
   ws.send(JSON.stringify({ type: 'document', document: getDocumentPayload() }));
   ws.send(JSON.stringify({ type: 'config', status: 'gifts', gifts }));
   ws.send(JSON.stringify({ type: 'config', status: 'quick-phrases', phrases: quickPhrases }));
+  ws.send(JSON.stringify({ type: 'config', status: 'preset-danmu', text: presetDanmuText }));
   ws.send(JSON.stringify({ type: 'config', status: 'danmu-mode', mode: danmuMode }));
   if (ws.presenterAuthorized) ws.send(JSON.stringify({ type: 'config', status: 'danmu-filter', words: blockedWords.slice() }));
   broadcastAudienceCount();
@@ -1429,7 +1431,7 @@ wss.on('connection', (ws, req) => {
     message.label = userLabel(ws.nickname, ws.userId);
 
     const cooldown = ws.userId ? getUserCooldown(ws.userId) : ws;
-    if (message.type === 'danmu' && danmuMode === 'preset') {
+    if (message.type === 'danmu' && danmuMode === 'preset' && message.content !== presetDanmuText) {
       ws.send(JSON.stringify({ type: 'system', status: 'danmu-mode', mode: danmuMode }));
       return;
     }
@@ -1489,3 +1491,23 @@ fs.watchFile(csvPath, { interval: 500 }, () => {
     console.error(`Gift configuration reload failed: ${error.message}`);
   }
 });
+
+function shutdownServer() {
+  clearTimeout(interactionPersistTimer);
+  clearTimeout(statsBroadcastTimer);
+  try {
+    persistInteractionState();
+    process.exit(0);
+  } catch (error) {
+    console.error(`Interaction state persistence failed on shutdown: ${error.message}`);
+    process.exit(1);
+  }
+}
+
+// IPC is available only to the owning desktop process, never to web clients.
+process.on('message', (message) => {
+  if (message?.type === 'desktop:shutdown') shutdownServer();
+});
+process.on('SIGINT', shutdownServer);
+process.on('SIGTERM', shutdownServer);
+if (process.send) process.on('disconnect', shutdownServer);

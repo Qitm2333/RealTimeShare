@@ -1,10 +1,14 @@
 const { app, BrowserWindow, dialog, ipcMain, screen } = require('electron');
 const { spawn } = require('child_process');
+const crypto = require('crypto');
 const http = require('http');
 const net = require('net');
 const path = require('path');
+const { createFirewallAccess } = require('./firewall');
 
 let port = Number(process.env.PORT || 3000);
+const firstPort = port;
+const lastPort = firstPort + 20;
 let appUrl = `http://127.0.0.1:${port}`;
 let serverProcess = null;
 let startWindow = null;
@@ -22,10 +26,14 @@ let qrExpanded = false;
 let qrEditing = false;
 let lotteryVisible = false;
 let quitting = false;
+let shutdownFinished = false;
+let startingInteraction = false;
+let stoppingInteraction = false;
+const sessionToken = crypto.randomBytes(24).toString('hex');
 
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
 
-function requestServer() {
+function requestServer(expectedPid) {
   return new Promise((resolve) => {
     const request = http.get(`${appUrl}/api/desktop-health`, (response) => {
       let body = '';
@@ -34,7 +42,7 @@ function requestServer() {
       response.on('end', () => {
         try {
           const data = JSON.parse(body);
-          resolve(response.statusCode === 200 && data.service === 'realtime-share');
+          resolve(response.statusCode === 200 && data.service === 'realtime-share' && data.pid === expectedPid);
         } catch (_error) {
           resolve(false);
         }
@@ -50,7 +58,7 @@ function canListen(candidatePort) {
     const server = net.createServer();
     server.unref();
     server.once('error', () => resolve(false));
-    server.listen(candidatePort, '0.0.0.0', () => {
+    server.listen(candidatePort, '127.0.0.1', () => {
       server.close(() => resolve(true));
     });
   });
@@ -68,32 +76,127 @@ async function selectAvailablePort() {
   throw new Error(`No available local port found near ${port}`);
 }
 
-async function ensureServer() {
-  await selectAvailablePort();
-
+async function startServer(listenHost) {
+  if (quitting) throw new Error('Application is quitting');
   const appRoot = path.join(__dirname, '..');
   const serverPath = path.join(appRoot, 'server.js');
-  serverProcess = spawn(process.execPath, [serverPath], {
+  const child = spawn(process.execPath, [serverPath], {
     cwd: app.isPackaged ? path.dirname(process.execPath) : appRoot,
     env: {
       ...process.env,
       PORT: String(port),
       DATA_DIR: path.join(app.getPath('userData'), 'data'),
+      LISTEN_HOST: listenHost,
+      SESSION_TOKEN: sessionToken,
       ELECTRON_RUN_AS_NODE: '1'
     },
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
     windowsHide: true
   });
+  serverProcess = child;
 
-  serverProcess.stdout?.on('data', (chunk) => process.stdout.write(`[server] ${chunk}`));
-  serverProcess.stderr?.on('data', (chunk) => process.stderr.write(`[server] ${chunk}`));
+  child.stdout?.on('data', (chunk) => process.stdout.write(`[server] ${chunk}`));
+  child.stderr?.on('data', (chunk) => process.stderr.write(`[server] ${chunk}`));
+  let spawnError;
+  child.once('error', (error) => { spawnError = error; });
 
   const deadline = Date.now() + 10000;
   while (Date.now() < deadline) {
-    if (await requestServer()) return;
+    if (spawnError) throw spawnError;
+    if (quitting) throw new Error('Application is quitting');
+    if (child.exitCode !== null || child.signalCode !== null) throw new Error('Interaction server exited');
+    if (await requestServer(child.pid)) return;
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
   throw new Error(`Interaction server did not start on port ${port}`);
+}
+
+async function ensureServer() {
+  await selectAvailablePort();
+  await startServer('127.0.0.1');
+}
+
+function stopServer() {
+  return new Promise((resolve, reject) => {
+    if (!serverProcess || serverProcess.exitCode !== null || serverProcess.signalCode !== null) {
+      serverProcess = null;
+      resolve();
+      return;
+    }
+    const processToStop = serverProcess;
+    let timeout;
+    let killTimeout;
+    const finish = () => {
+      clearTimeout(timeout);
+      clearTimeout(killTimeout);
+      if (serverProcess === processToStop) serverProcess = null;
+      resolve();
+    };
+    processToStop.once('exit', finish);
+    timeout = setTimeout(() => {
+      processToStop.removeListener('exit', finish);
+      reject(new Error('Interaction server did not stop'));
+    }, 3000);
+    try {
+      if (processToStop.connected) {
+        killTimeout = setTimeout(() => processToStop.kill(), 2000);
+        processToStop.send({ type: 'desktop:shutdown' }, (error) => {
+          if (error && processToStop.exitCode === null && processToStop.signalCode === null) processToStop.kill();
+        });
+      } else {
+        processToStop.kill();
+      }
+    } catch (error) {
+      clearTimeout(timeout);
+      clearTimeout(killTimeout);
+      processToStop.removeListener('exit', finish);
+      reject(error);
+    }
+  });
+}
+
+function runPowerShell(command, elevated = false) {
+  return new Promise((resolve) => {
+    const encoded = Buffer.from(command, 'utf16le').toString('base64');
+    const invocation = elevated
+      ? `$ErrorActionPreference = 'Stop'; try { $process = Start-Process -FilePath 'powershell.exe' -Verb RunAs -WindowStyle Hidden -Wait -PassThru -ArgumentList @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-EncodedCommand','${encoded}'); exit $process.ExitCode } catch { exit 1 }`
+      : command;
+    const invocationEncoded = Buffer.from(invocation, 'utf16le').toString('base64');
+    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', invocationEncoded], {
+      windowsHide: true,
+      stdio: 'ignore'
+    });
+    child.once('error', () => resolve(false));
+    child.once('exit', (code) => resolve(code === 0));
+  });
+}
+
+const ensureFirewallAccess = createFirewallAccess({
+  platform: process.platform,
+  packaged: app.isPackaged,
+  executable: process.execPath,
+  firstPort,
+  lastPort,
+  runPowerShell
+});
+
+async function enableLanServer() {
+  if (!await ensureFirewallAccess()) return false;
+  if (quitting) return false;
+  await stopServer();
+  try {
+    await startServer('0.0.0.0');
+    return true;
+  } catch (error) {
+    try {
+      await stopServer();
+      await startServer('127.0.0.1');
+    } catch (fallbackError) {
+      console.error(fallbackError);
+    }
+    console.error(error);
+    return false;
+  }
 }
 
 function windowOptions(overrides = {}) {
@@ -366,8 +469,20 @@ function startInteraction(displayId) {
   startWindow?.hide();
 }
 
-function stopInteraction() {
+async function stopInteraction() {
   closeInteractionWindows();
+  try {
+    await stopServer();
+    await startServer('127.0.0.1');
+  } catch (error) {
+    if (!quitting) {
+      console.error(error);
+      dialog.showErrorBox('互动服务启动失败', '无法返回启动界面，请重新打开应用');
+      app.quit();
+    }
+    return;
+  }
+  if (quitting) return;
   if (!startWindow || startWindow.isDestroyed()) createStartWindow();
   else {
     startWindow.webContents.reloadIgnoringCache();
@@ -393,14 +508,30 @@ ipcMain.handle('desktop:list-displays', () => screen.getAllDisplays().map((displ
   scaleFactor: display.scaleFactor
 })));
 
-ipcMain.handle('desktop:start', (_event, displayId) => {
-  startInteraction(String(displayId));
-  return { ok: true };
+ipcMain.handle('desktop:start', async (_event, displayId) => {
+  if (startingInteraction || stoppingInteraction || overlayWindow || quitting) return { ok: false, error: 'desktop' };
+  startingInteraction = true;
+  try {
+    if (!await enableLanServer() || quitting) return { ok: false, error: 'lan-access' };
+    startInteraction(String(displayId));
+    return { ok: true };
+  } catch (error) {
+    console.error(error);
+    return { ok: false, error: 'lan-access' };
+  } finally {
+    startingInteraction = false;
+  }
 });
 
-ipcMain.handle('desktop:stop', () => {
-  stopInteraction();
-  return { ok: true };
+ipcMain.handle('desktop:stop', async () => {
+  if (startingInteraction || stoppingInteraction || quitting) return { ok: false };
+  stoppingInteraction = true;
+  try {
+    await stopInteraction();
+    return { ok: !quitting };
+  } finally {
+    stoppingInteraction = false;
+  }
 });
 
 ipcMain.handle('desktop:minimize', () => {
@@ -462,10 +593,19 @@ app.whenReady().then(async () => {
   }
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', (event) => {
+  if (shutdownFinished) return;
+  event.preventDefault();
+  if (quitting) return;
   quitting = true;
   closeInteractionWindows();
-  if (serverProcess && !serverProcess.killed) serverProcess.kill();
+  stopServer().catch((error) => {
+    console.error(error);
+    if (serverProcess && !serverProcess.killed) serverProcess.kill();
+  }).finally(() => {
+    shutdownFinished = true;
+    app.quit();
+  });
 });
 
 app.on('window-all-closed', () => app.quit());

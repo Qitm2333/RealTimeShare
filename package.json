@@ -1,6 +1,6 @@
 {
   "name": "live-interaction-share",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "TORRAS live interaction desktop overlay with audience messaging, gifts, polls and lotteries.",
   "main": "electron/main.js",
@@ -8,11 +8,12 @@
     "start": "node server.js",
     "dev": "node server.js",
     "desktop": "electron .",
-    "check": "node --check server.js && node --check electron/main.js && node --check electron/preload.js && node --check public/js/presenter.js && node --check public/js/audience.js && node --check public/js/desktop-start.js",
+    "check": "node --check server.js && node --check electron/main.js && node --check electron/firewall.js && node --check electron/preload.js && node --check public/js/presenter.js && node --check public/js/audience.js && node --check public/js/desktop-start.js",
     "test:load": "node scripts/load-test.js",
     "desktop:build": "electron-builder --win",
     "desktop:portable": "electron-builder --win portable",
-    "desktop:mac": "electron-builder --mac zip --arm64 --publish never"
+    "desktop:mac": "electron-builder --mac zip --arm64 --publish never",
+    "test:v21": "node --test scripts/v21-*.test.js"
   },
   "dependencies": {
     "express": "^4.18.3",
@@ -43,11 +44,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -57,7 +62,9 @@
       "target": [
         {
           "target": "zip",
-          "arch": ["arm64"]
+          "arch": [
+            "arm64"
+          ]
         }
       ],
       "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
@@ -78,7 +85,8 @@
     "portable": {
       "artifactName": "${productName}-${version}-portable-${arch}.${ext}",
       "splashImage": "build/portable-splash.bmp",
-      "useZip": true
+      "useZip": true,
+      "unpackDirName": "TorrasLiveInteractionPortable"
     }
   }
 }

@@ -80,11 +80,14 @@
       });
       if (!response.ok) throw new Error('password');
       if (!window.desktopOverlay) throw new Error('desktop');
-      await window.desktopOverlay.start(selectedDisplayId);
+      const result = await window.desktopOverlay.start(selectedDisplayId);
+      if (!result?.ok) throw new Error(result?.error || 'desktop');
     } catch (error) {
       startError.textContent = error.message === 'password'
         ? '密码不正确'
-        : '桌面互动启动失败，请重试';
+        : error.message === 'lan-access'
+          ? '互动启动失败，请允许 Windows 授权后重试'
+          : '桌面互动启动失败，请重试';
       startError.hidden = false;
       passwordInput.select();
       startButton.disabled = false;

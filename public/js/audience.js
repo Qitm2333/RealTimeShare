@@ -54,6 +54,7 @@
   let resetRequired = false;
   let randomNicknameRequested = false;
   let danmuMode = 'free';
+  let presetDanmuText = '';
   const sensoryAdjectives = ['美味的', '香甜的', '酥脆的', '冰凉的', '温热的', '柔软的', '清新的', '辛辣的', '酸爽的', '浓郁的', '丝滑的', '闪亮的', '轻盈的', '热烈的', '安静的', '迷人的', '巧克力味的', '薄荷味的', '奶油香的', '阳光晒过的'];
   const sensoryObjects = ['烧鸡', '西瓜', '巧克力', '柠檬', '爆米花', '云朵', '月亮', '蜜桃', '海盐', '可颂', '草莓', '雪糕', '咖啡', '橘子', '薯片', '葡萄', '芒果', '奶酪', '棉花糖', '小夜灯'];
 
@@ -216,11 +217,26 @@
   function applyDanmuMode(mode) {
     danmuMode = mode === 'preset' ? 'preset' : 'free';
     const presetMode = danmuMode === 'preset';
-    freeDanmuComposer.hidden = presetMode;
-    if (presetMode) messageInput.value = '';
-    quickPhraseTitle.textContent = presetMode ? '预设弹幕' : '快捷用语';
-    danmuModeHint.textContent = presetMode ? '仅可发送安全预设用语' : '点击发送预设弹幕';
-    quickPhraseGrid.setAttribute('aria-label', presetMode ? '预设弹幕列表' : '快捷用语列表');
+    freeDanmuComposer.hidden = false;
+    messageInput.readOnly = presetMode;
+    messageInput.setAttribute('aria-readonly', String(presetMode));
+    if (presetMode) {
+      messageInput.value = presetDanmuText;
+      messageInput.placeholder = '等待演讲者设置预设弹幕';
+    } else {
+      messageInput.value = '';
+      messageInput.placeholder = '发一句现场弹幕';
+    }
+    quickPhraseTitle.textContent = '高级预设弹幕';
+    danmuModeHint.textContent = '点击发送图片弹幕';
+    quickPhraseGrid.setAttribute('aria-label', '高级预设弹幕列表');
+    refreshDanmuCooldown();
+  }
+
+  function applyPresetDanmu(text) {
+    presetDanmuText = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    if (danmuMode === 'preset') messageInput.value = presetDanmuText;
+    refreshDanmuCooldown();
   }
 
   function isConnected() {
@@ -334,7 +350,7 @@
   function refreshDanmuCooldown() {
     window.clearTimeout(danmuCooldownTimer);
     const remainingMs = Math.max(0, danmuCooldownEndsAt - Date.now());
-    sendButton.disabled = remainingMs > 0 || !isConnected() || !identityConfirmed;
+    sendButton.disabled = remainingMs > 0 || !isConnected() || !identityConfirmed || (danmuMode === 'preset' && !presetDanmuText);
     sendButton.textContent = remainingMs ? `发送 ${Math.ceil(remainingMs / 1000)}s` : '发送';
     if (remainingMs) {
       sendButton.setAttribute('aria-label', `弹幕冷却中，还需 ${Math.ceil(remainingMs / 1000)} 秒`);
@@ -360,10 +376,6 @@
   }
 
   function send(payload, options = {}) {
-    if (payload?.type === 'danmu' && danmuMode === 'preset') {
-      setStatus('当前仅允许预设弹幕', '');
-      return false;
-    }
     if (payload?.type === 'danmu' && Date.now() < danmuCooldownEndsAt) {
       setStatus('弹幕冷却中，请稍后再发', '');
       return false;
@@ -445,6 +457,10 @@
         applyDanmuMode(message.mode);
       }
 
+      if (message.type === 'config' && message.status === 'preset-danmu') {
+        applyPresetDanmu(message.text);
+      }
+
       if (message.type === 'config' && message.status === 'quick-phrases') {
         quickPhraseList = Array.isArray(message.phrases) ? message.phrases : [];
         renderQuickPhraseButtons();
@@ -455,7 +471,7 @@
 
       if (message.type === 'system' && message.status === 'danmu-mode') {
         applyDanmuMode(message.mode);
-        setStatus('当前仅允许预设弹幕', '');
+        setStatus('预设弹幕已更新，请重新发送', '');
       }
 
       if (message.type === 'identity' && message.user) {
@@ -542,7 +558,7 @@
       return;
     }
 
-    if (send({ type: 'danmu', content }, { cooldown: 'danmu' })) messageInput.value = '';
+    if (send({ type: 'danmu', content }, { cooldown: 'danmu' }) && danmuMode === 'free') messageInput.value = '';
     messageInput.focus();
   });
 

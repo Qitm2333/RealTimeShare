@@ -125,6 +125,8 @@ function waitForCondition(predicate, label, timeoutMs) {
 class LoadClient {
   constructor(url, cookie = '') {
     this.identity = null;
+    this.danmuMode = 'free';
+    this.presetDanmuText = '';
     this.latestStats = null;
     this.cooldowns = { danmu: 0, gifts: 0, other: 0 };
     this.protocolErrors = [];
@@ -153,6 +155,8 @@ class LoadClient {
       return;
     }
     if (message.type === 'identity') this.identity = message.user;
+    if (message.type === 'config' && message.status === 'danmu-mode') this.danmuMode = message.mode;
+    if (message.type === 'config' && message.status === 'preset-danmu') this.presetDanmuText = message.text;
     if (message.type === 'stats') this.latestStats = message.stats;
     if (message.type === 'system' && message.status === 'cooldown') {
       if (message.scope === 'danmu') this.cooldowns.danmu += 1;
@@ -257,12 +261,18 @@ async function main() {
     };
     result.baselineTotals = baseline;
     const danmuPrefix = `LT:${runId}:D:`;
+    result.danmuMode = presenter.danmuMode;
+    if (expectedDanmu && presenter.danmuMode === 'preset' && !presenter.presetDanmuText) {
+      throw new Error('Preset mode has no configured sentence');
+    }
+    const danmuSentAtByNickname = new Map();
     const giftSentAtByNickname = new Map();
 
     presenter.listeners.add((message) => {
       const receivedAt = Date.now();
-      if (message.type === 'danmu' && message.content?.startsWith(danmuPrefix)) {
-        const sentAt = Number(message.content.split(':').at(-1));
+      if (message.type === 'danmu' && danmuSentAtByNickname.has(message.nickname)
+        && (message.content?.startsWith(danmuPrefix) || (presenter.danmuMode === 'preset' && message.content === presenter.presetDanmuText))) {
+        const sentAt = danmuSentAtByNickname.get(message.nickname).shift();
         result.received.danmu += 1;
         if (Number.isFinite(sentAt)) result.latencyMs.danmu.push(receivedAt - sentAt);
       }
@@ -285,7 +295,14 @@ async function main() {
       for (let wave = 0; wave < options.danmuPerUser; wave += 1) {
         audiences.forEach((client, index) => {
           const sentAt = Date.now();
-          client.send({ type: 'danmu', content: `${danmuPrefix}${wave}:${index}:${sentAt}` });
+          const nickname = client.identity.nickname;
+          const sentTimes = danmuSentAtByNickname.get(nickname) || [];
+          sentTimes.push(sentAt);
+          danmuSentAtByNickname.set(nickname, sentTimes);
+          const content = presenter.danmuMode === 'preset'
+            ? presenter.presetDanmuText
+            : `${danmuPrefix}${wave}:${index}:${sentAt}`;
+          client.send({ type: 'danmu', content });
         });
         if (wave + 1 < options.danmuPerUser) await sleep(options.danmuIntervalMs);
       }

@@ -88,7 +88,7 @@
   const giftEffectLimit = document.getElementById('giftEffectLimit');
   const danmuBlockedWords = document.getElementById('danmuBlockedWords');
   const danmuModeSelect = document.getElementById('danmuMode');
-  const quickPhraseSettings = document.getElementById('quickPhraseSettings');
+  const presetDanmuText = document.getElementById('presetDanmuText');
   const settingsSave = document.getElementById('settingsSave');
   const settingsStatus = document.getElementById('settingsStatus');
   const presenterLotteryDialog = document.getElementById('presenterLotteryDialog');
@@ -792,7 +792,6 @@
   function applyQuickPhrases(phrases) {
     const list = Array.isArray(phrases) ? phrases : [];
     quickPhrasesById = Object.fromEntries(list.map((phrase) => [phrase.id, phrase]));
-    if (quickPhraseSettings) quickPhraseSettings.value = list.map((phrase) => phrase.text).join('\n');
   }
 
   function applyGifts(nextGifts) {
@@ -1503,44 +1502,64 @@
     }
   }
 
+  function applyPresetDanmu(text) {
+    if (presetDanmuText) presetDanmuText.value = String(text || '').slice(0, 80);
+  }
+
+  async function loadPresetDanmu() {
+    try {
+      const response = await fetch('/api/preset-danmu');
+      if (!response.ok) throw new Error('Preset danmu loading failed');
+      const data = await response.json();
+      applyPresetDanmu(data.text);
+    } catch (error) {
+      setSettingsStatus('预设弹幕加载失败', 'is-error');
+    }
+  }
+
   async function saveSettings() {
-    setGiftEffectLimit(giftEffectLimit.value);
+    const previousGiftEffectLimit = maxGiftEffects;
+    const nextGiftEffectLimit = normalizeGiftEffectLimit(giftEffectLimit.value);
+    const nextDanmuMode = danmuModeSelect.value;
     const words = danmuBlockedWords.value
       .split(/[\n,，、]+/)
       .map((word) => word.replace(/\s+/g, ' ').trim())
       .filter(Boolean);
-    const phrases = quickPhraseSettings.value.split(/\r?\n/).map((text) => text.trim()).filter(Boolean);
-    if (!phrases.length || phrases.length > 30 || phrases.some((text) => text.length > 40)) {
-      setSettingsStatus('请填写 1–30 条预设弹幕，每条最多 40 字', 'is-error');
+    const presetText = presetDanmuText.value.replace(/\s+/g, ' ').trim().slice(0, 80);
+    if (!presetText) {
+      setSettingsStatus('请填写预设弹幕句子', 'is-error');
       return;
     }
     settingsSave.disabled = true;
     try {
-      const [filterResponse, modeResponse, phrasesResponse] = await Promise.all([
+      const [filterResponse, presetResponse] = await Promise.all([
         fetch('/api/danmu-filter', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ words })
         }),
-        fetch('/api/danmu-mode', {
+        fetch('/api/preset-danmu', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mode: danmuModeSelect.value })
-        }),
-        fetch('/api/quick-phrases', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phrases })
+          body: JSON.stringify({ text: presetText })
         })
       ]);
-      if (!filterResponse.ok || !modeResponse.ok || !phrasesResponse.ok) throw new Error('Interaction settings save failed');
+      if (!filterResponse.ok || !presetResponse.ok) throw new Error('Interaction settings save failed');
+      const modeResponse = await fetch('/api/danmu-mode', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: nextDanmuMode })
+      });
+      if (!modeResponse.ok) throw new Error('Interaction settings save failed');
+      setGiftEffectLimit(nextGiftEffectLimit);
       const data = await filterResponse.json();
       const modeData = await modeResponse.json();
       danmuBlockedWords.value = Array.isArray(data.words) ? data.words.join('\n') : '';
       applyDanmuMode(modeData.mode);
-      applyQuickPhrases((await phrasesResponse.json()).phrases);
+      applyPresetDanmu((await presetResponse.json()).text);
       setSettingsStatus('设置已保存', 'is-success');
     } catch (error) {
+      setGiftEffectLimit(previousGiftEffectLimit);
       setSettingsStatus('互动设置保存失败', 'is-error');
     } finally {
       settingsSave.disabled = false;
@@ -1625,6 +1644,10 @@
 
       if (message.type === 'config' && message.status === 'danmu-mode') {
         applyDanmuMode(message.mode);
+      }
+
+      if (message.type === 'config' && message.status === 'preset-danmu') {
+        applyPresetDanmu(message.text);
       }
 
       if (message.type === 'config' && message.status === 'quick-phrases') {
@@ -1744,6 +1767,7 @@
       await loadAudienceUrls();
       await loadDanmuFilter();
       await loadDanmuMode();
+      await loadPresetDanmu();
       connectWebSocket();
     } catch (error) {
       passwordError.hidden = false;
@@ -1913,6 +1937,7 @@
       await loadAudienceUrls();
       await loadDanmuFilter();
       await loadDanmuMode();
+      await loadPresetDanmu();
     }
     if (authenticated) connectWebSocket();
   });
