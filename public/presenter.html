@@ -205,11 +205,15 @@
                 <option value="preset">预设弹幕</option>
               </select>
             </label>
-            <label class="settings-field">
+            <div class="settings-field preset-danmu-field">
               <span>预设弹幕句子</span>
-              <small>这句话会直接显示在观众的弹幕输入框中，观众点击发送即可。</small>
-              <input id="presetDanmuText" type="text" maxlength="80" placeholder="例如：为讲者点赞！" />
-            </label>
+              <small>可保存多条句子；当前句子会显示在观众输入框中，点击发送即可。</small>
+              <div id="presetDanmuList" class="preset-danmu-list" aria-label="预设弹幕列表"></div>
+              <div class="preset-danmu-input-row">
+                <input id="presetDanmuText" type="text" maxlength="80" placeholder="例如：为讲者点赞！" />
+                <button id="presetDanmuAdd" class="secondary-button" type="button">新增并设为当前</button>
+              </div>
+            </div>
             <button id="settingsSave" class="primary-button" type="button">保存设置</button>
             <p id="settingsStatus" class="settings-status" aria-live="polite"></p>
           </div>

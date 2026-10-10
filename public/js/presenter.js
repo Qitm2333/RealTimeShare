@@ -89,6 +89,8 @@
   const danmuBlockedWords = document.getElementById('danmuBlockedWords');
   const danmuModeSelect = document.getElementById('danmuMode');
   const presetDanmuText = document.getElementById('presetDanmuText');
+  const presetDanmuList = document.getElementById('presetDanmuList');
+  const presetDanmuAdd = document.getElementById('presetDanmuAdd');
   const settingsSave = document.getElementById('settingsSave');
   const settingsStatus = document.getElementById('settingsStatus');
   const presenterLotteryDialog = document.getElementById('presenterLotteryDialog');
@@ -97,6 +99,7 @@
   const presenterLotteryClose = document.getElementById('presenterLotteryClose');
   const desktopStop = document.getElementById('desktopStop');
   let activePoll;
+  let presetDanmuTexts = [];
   let selectedPreset = 0;
   let pollPresetsData = [];
   try {
@@ -1504,8 +1507,68 @@
     }
   }
 
-  function applyPresetDanmu(text) {
-    if (presetDanmuText) presetDanmuText.value = String(text || '').slice(0, 80);
+  function applyPresetDanmu(text, texts = presetDanmuTexts) {
+    const activeText = String(text || '').slice(0, 80);
+    presetDanmuTexts = Array.from(new Set((Array.isArray(texts) ? texts : [activeText])
+      .map((item) => String(item || '').replace(/\s+/g, ' ').trim().slice(0, 80))
+      .filter(Boolean)));
+    if (activeText && !presetDanmuTexts.includes(activeText)) presetDanmuTexts.unshift(activeText);
+    if (presetDanmuText) presetDanmuText.value = activeText;
+    renderPresetDanmuList(activeText);
+  }
+
+  function renderPresetDanmuList(activeText = presetDanmuText?.value || '') {
+    if (!presetDanmuList) return;
+    presetDanmuList.textContent = '';
+    presetDanmuTexts.forEach((text) => {
+      const row = document.createElement('div');
+      row.className = `preset-danmu-row${text === activeText ? ' is-active' : ''}`;
+      const select = document.createElement('button');
+      select.type = 'button';
+      select.className = 'preset-danmu-select';
+      select.textContent = text;
+      select.title = '设为当前预设弹幕';
+      select.addEventListener('click', () => selectPresetDanmu(text));
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'preset-danmu-remove';
+      remove.textContent = '删除';
+      remove.title = '删除这条预设弹幕';
+      remove.disabled = presetDanmuTexts.length <= 1;
+      remove.addEventListener('click', () => deletePresetDanmu(text));
+      row.append(select, remove);
+      presetDanmuList.appendChild(row);
+    });
+  }
+
+  async function selectPresetDanmu(text) {
+    if (!text || text === presetDanmuText.value) return;
+    await savePresetDanmu(text, '预设弹幕已切换');
+  }
+
+  async function savePresetDanmu(text, successMessage = '预设弹幕已保存') {
+    const response = await fetch('/api/preset-danmu', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text })
+    });
+    if (!response.ok) throw new Error('Preset danmu save failed');
+    const data = await response.json();
+    applyPresetDanmu(data.text, data.texts);
+    setSettingsStatus(successMessage, 'is-success');
+  }
+
+  async function deletePresetDanmu(text) {
+    if (presetDanmuTexts.length <= 1) return;
+    try {
+      const response = await fetch('/api/preset-danmu', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text })
+      });
+      if (!response.ok) throw new Error('Preset danmu delete failed');
+      const data = await response.json();
+      applyPresetDanmu(data.text, data.texts);
+      setSettingsStatus('预设弹幕已删除', 'is-success');
+    } catch (error) {
+      setSettingsStatus('预设弹幕删除失败', 'is-error');
+    }
   }
 
   async function loadPresetDanmu() {
@@ -1513,7 +1576,7 @@
       const response = await fetch('/api/preset-danmu');
       if (!response.ok) throw new Error('Preset danmu loading failed');
       const data = await response.json();
-      applyPresetDanmu(data.text);
+      applyPresetDanmu(data.text, data.texts);
     } catch (error) {
       setSettingsStatus('预设弹幕加载失败', 'is-error');
     }
@@ -1558,7 +1621,8 @@
       const modeData = await modeResponse.json();
       danmuBlockedWords.value = Array.isArray(data.words) ? data.words.join('\n') : '';
       applyDanmuMode(modeData.mode);
-      applyPresetDanmu((await presetResponse.json()).text);
+      const presetData = await presetResponse.json();
+      applyPresetDanmu(presetData.text, presetData.texts);
       setSettingsStatus('设置已保存', 'is-success');
     } catch (error) {
       setGiftEffectLimit(previousGiftEffectLimit);
@@ -1567,6 +1631,22 @@
       settingsSave.disabled = false;
     }
   }
+
+  presetDanmuAdd?.addEventListener('click', async () => {
+    const text = presetDanmuText.value.replace(/\s+/g, ' ').trim().slice(0, 80);
+    if (!text) {
+      setSettingsStatus('请填写预设弹幕句子', 'is-error');
+      return;
+    }
+    presetDanmuAdd.disabled = true;
+    try {
+      await savePresetDanmu(text, '预设弹幕已新增');
+    } catch (error) {
+      setSettingsStatus('预设弹幕保存失败', 'is-error');
+    } finally {
+      presetDanmuAdd.disabled = false;
+    }
+  });
 
   function clearSessionEffects() {
     effectLayer.textContent = '';
@@ -1649,7 +1729,7 @@
       }
 
       if (message.type === 'config' && message.status === 'preset-danmu') {
-        applyPresetDanmu(message.text);
+        applyPresetDanmu(message.text, message.texts);
       }
 
       if (message.type === 'config' && message.status === 'quick-phrases') {

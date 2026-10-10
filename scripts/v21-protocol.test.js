@@ -108,6 +108,8 @@ test('preset sentence, authorization, cooldown, persistence and 150-user bursts'
     assert.equal((await put('preset-danmu', { text: '擅自更改' }, '')).status, 401);
     assert.equal((await put('preset-danmu', { text: '   ' })).status, 400);
     assert.equal((await put('preset-danmu', { text: '一起为演讲者点赞' })).status, 200);
+    assert.deepEqual((await (await fetch(`${url}/api/preset-danmu`)).json()).texts, ['一起为演讲者点赞', '为讲者点赞！']);
+    assert.equal((await fetch(`${url}/api/preset-danmu`, { method: 'DELETE', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify({ text: '不存在的句子' }) })).status, 404);
     assert.equal((await put('danmu-mode', { mode: 'preset' })).status, 200);
     const failedSavePath = path.join(dataDir, 'preset-danmu.json.tmp');
     fs.mkdirSync(failedSavePath);
@@ -132,6 +134,14 @@ test('preset sentence, authorization, cooldown, persistence and 150-user bursts'
     await presenter.wait((message) => message.type === 'quick-danmu' && message.phraseId === phrases[0].id);
     assert.equal((await put('preset-danmu', { text: '恭喜获奖！' })).status, 200);
     await audience.wait((message) => message.type === 'config' && message.status === 'preset-danmu' && message.text === '恭喜获奖！');
+    const deletePreset = (text) => fetch(`${url}/api/preset-danmu`, { method: 'DELETE', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify({ text }) });
+    assert.equal((await deletePreset('一起为演讲者点赞')).status, 200);
+    assert.equal((await deletePreset('为讲者点赞！')).status, 200);
+    assert.equal((await deletePreset('恭喜获奖！')).status, 400);
+    assert.equal((await (await fetch(`${url}/api/preset-danmu`)).json()).text, '恭喜获奖！');
+    assert.equal((await put('preset-danmu', { text: '一起为演讲者点赞' })).status, 200);
+    assert.equal((await put('preset-danmu', { text: '恭喜获奖！' })).status, 200);
+    assert.deepEqual((await (await fetch(`${url}/api/preset-danmu`)).json()).texts, ['恭喜获奖！', '一起为演讲者点赞']);
     audience.send({ type: 'danmu', content: '一起为演讲者点赞' });
     await audience.wait((message) => message.type === 'system' && message.status === 'danmu-mode');
     await pause(cooldown.retryAfterMs + 30);
@@ -150,6 +160,7 @@ test('preset sentence, authorization, cooldown, persistence and 150-user bursts'
     await start('127.0.0.1');
     assert.equal((await (await fetch(`${url}/api/session`, { headers: { Cookie: cookie } })).json()).authenticated, true);
     assert.equal((await (await fetch(`${url}/api/preset-danmu`)).json()).text, '恭喜获奖！');
+    assert.deepEqual((await (await fetch(`${url}/api/preset-danmu`)).json()).texts, ['恭喜获奖！', '一起为演讲者点赞']);
     assert.equal((await (await fetch(`${url}/api/danmu-mode`, { headers: { Cookie: cookie } })).json()).mode, 'preset');
     assert.equal((await put('danmu-mode', { mode: 'free' })).status, 200);
     assert.equal((await runLoad(url)).danmuMode, 'free');

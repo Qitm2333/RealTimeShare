@@ -67,7 +67,8 @@ const users = loadUsers();
 const userCooldowns = new Map();
 let blockedWords = loadBlockedWords();
 let danmuMode = loadDanmuMode();
-let presetDanmuText = loadPresetDanmu();
+let presetDanmuTexts = loadPresetDanmu();
+let presetDanmuText = presetDanmuTexts[0] || '为讲者点赞！';
 
 function loadUsers() {
   try {
@@ -149,15 +150,21 @@ function normalizePresetDanmu(value) {
 function loadPresetDanmu() {
   try {
     const parsed = JSON.parse(fs.readFileSync(presetDanmuPath, 'utf8'));
-    return normalizePresetDanmu(parsed?.text) || '为讲者点赞！';
+    const rawTexts = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed?.texts) ? parsed.texts : [parsed?.text];
+    const texts = Array.from(new Set(rawTexts.map(normalizePresetDanmu).filter(Boolean))).slice(0, 50);
+    const active = normalizePresetDanmu(parsed?.text);
+    if (active && texts.includes(active)) return [active, ...texts.filter((text) => text !== active)];
+    return texts.length ? texts : ['为讲者点赞！'];
   } catch (error) {
-    return '为讲者点赞！';
+    return ['为讲者点赞！'];
   }
 }
 
-function persistPresetDanmu(text) {
+function persistPresetDanmu(texts, activeText) {
   const tempPath = `${presetDanmuPath}.tmp`;
-  fs.writeFileSync(tempPath, JSON.stringify({ text }, null, 2));
+  fs.writeFileSync(tempPath, JSON.stringify({ text: activeText, texts }, null, 2));
   fs.renameSync(tempPath, presetDanmuPath);
 }
 
@@ -909,7 +916,7 @@ app.put('/api/danmu-mode', requirePresenter, (req, res) => {
 });
 
 app.get('/api/preset-danmu', (_req, res) => {
-  res.json({ text: presetDanmuText });
+  res.json({ text: presetDanmuText, texts: presetDanmuTexts.slice() });
 });
 
 app.put('/api/preset-danmu', requirePresenter, (req, res) => {
@@ -919,10 +926,35 @@ app.put('/api/preset-danmu', requirePresenter, (req, res) => {
     return;
   }
   try {
-    persistPresetDanmu(text);
+    const nextTexts = [text, ...presetDanmuTexts.filter((item) => item !== text)].slice(0, 50);
+    persistPresetDanmu(nextTexts, text);
+    presetDanmuTexts = nextTexts;
     presetDanmuText = text;
-    broadcast({ type: 'config', status: 'preset-danmu', text: presetDanmuText });
-    res.json({ ok: true, text: presetDanmuText });
+    broadcast({ type: 'config', status: 'preset-danmu', text: presetDanmuText, texts: presetDanmuTexts.slice() });
+    res.json({ ok: true, text: presetDanmuText, texts: presetDanmuTexts.slice() });
+  } catch (error) {
+    res.status(500).json({ error: 'preset_danmu_save_failed' });
+  }
+});
+
+app.delete('/api/preset-danmu', requirePresenter, (req, res) => {
+  const text = normalizePresetDanmu(req.body?.text);
+  if (!text || !presetDanmuTexts.includes(text)) {
+    res.status(404).json({ error: 'preset_danmu_not_found' });
+    return;
+  }
+  if (presetDanmuTexts.length <= 1) {
+    res.status(400).json({ error: 'preset_danmu_last_item' });
+    return;
+  }
+  try {
+    const nextTexts = presetDanmuTexts.filter((item) => item !== text);
+    const nextActiveText = presetDanmuText === text ? nextTexts[0] : presetDanmuText;
+    persistPresetDanmu(nextTexts, nextActiveText);
+    presetDanmuTexts = nextTexts;
+    presetDanmuText = nextActiveText;
+    broadcast({ type: 'config', status: 'preset-danmu', text: presetDanmuText, texts: presetDanmuTexts.slice() });
+    res.json({ ok: true, text: presetDanmuText, texts: presetDanmuTexts.slice() });
   } catch (error) {
     res.status(500).json({ error: 'preset_danmu_save_failed' });
   }
@@ -1143,7 +1175,7 @@ wss.on('connection', (ws, req) => {
   ws.send(JSON.stringify({ type: 'document', document: getDocumentPayload() }));
   ws.send(JSON.stringify({ type: 'config', status: 'gifts', gifts }));
   ws.send(JSON.stringify({ type: 'config', status: 'quick-phrases', phrases: quickPhrases }));
-  ws.send(JSON.stringify({ type: 'config', status: 'preset-danmu', text: presetDanmuText }));
+  ws.send(JSON.stringify({ type: 'config', status: 'preset-danmu', text: presetDanmuText, texts: presetDanmuTexts.slice() }));
   ws.send(JSON.stringify({ type: 'config', status: 'danmu-mode', mode: danmuMode }));
   if (ws.presenterAuthorized) ws.send(JSON.stringify({ type: 'config', status: 'danmu-filter', words: blockedWords.slice() }));
   broadcastAudienceCount();

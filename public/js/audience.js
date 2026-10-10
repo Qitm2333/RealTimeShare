@@ -458,7 +458,7 @@
       }
 
       if (message.type === 'config' && message.status === 'preset-danmu') {
-        applyPresetDanmu(message.text);
+        applyPresetDanmu(message.text, message.texts);
       }
 
       if (message.type === 'config' && message.status === 'quick-phrases') {
